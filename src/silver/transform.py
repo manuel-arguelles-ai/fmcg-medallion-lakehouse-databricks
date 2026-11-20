@@ -128,6 +128,11 @@ def untag(df):
     return df.drop("_q_ids", "_q_reasons")
 
 
+def merge_condition(mode: str) -> str:
+    """Condicion WHEN MATCHED del MERGE: `full` -> >=, `incremental` -> > (ver Run.merge)."""
+    return "s._ingest_ts > t._ingest_ts" if mode == "incremental" else "s._ingest_ts >= t._ingest_ts"
+
+
 class Run:
     """Contexto de una corrida de una entidad: acumula ops.dq_results y escribe Silver/cuarentena."""
 
@@ -184,13 +189,18 @@ class Run:
         q.write.mode("append").saveAsTable(table)
 
     def merge(self, valid):
-        """MERGE idempotente por clave de negocio; solo pisa si la fila nueva es igual o mas reciente."""
+        """MERGE idempotente por clave de negocio.
+
+        `full` pisa si la fila es igual o mas reciente (>=): reprocesar aplica reglas/referencias nuevas.
+        `incremental` solo pisa si es ESTRICTAMENTE mas reciente (>): el staging conserva el ultimo lote con
+        datos (D9), asi que una corrida sin lote nuevo relee el mismo lote y no debe reescribir nada."""
         view = f"_silver_src_{self.entity}"
         valid.select(*ddl.columns(self.entity)).createOrReplaceTempView(view)
         on = " AND ".join(f"t.`{k}` = s.`{k}`" for k in ddl.MERGE_KEY[self.entity])
+        newer = merge_condition(self.mode)
         self.spark.sql(
             f"MERGE INTO {self.catalog}.silver.{self.entity} AS t USING {view} AS s ON {on} "
-            "WHEN MATCHED AND s._ingest_ts >= t._ingest_ts THEN UPDATE SET * "
+            f"WHEN MATCHED AND {newer} THEN UPDATE SET * "
             "WHEN NOT MATCHED THEN INSERT *")
 
     def finish(self) -> dict:
