@@ -1299,6 +1299,80 @@
             "width": 4,
             "height": 6
           }
+        },
+        {
+          "widget": {
+            "name": "l_variacion_mensual",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "fields": [
+                    {
+                      "name": "month_start",
+                      "expression": "`month_start`"
+                    },
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "avg(revenue_mom_pct)",
+                      "expression": "AVG(`revenue_mom_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "month_start",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mes"
+                },
+                "y": {
+                  "fieldName": "avg(revenue_mom_pct)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Variación vs mes anterior",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "company",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Compañía"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Variación mensual de ingresos (madre vs hija)",
+                "showDescription": true,
+                "description": "revenue_mom_pct de v_kpi_company_comparison: ingresos del mes / mes anterior - 1"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 6,
+            "height": 6
+          }
         }
       ],
       "pageType": "PAGE_TYPE_CANVAS"

@@ -200,6 +200,19 @@ page_ventas = [
                          "mark": {"layout": "stack"},
                          "frame": frame("Participación mensual en ingresos (madre vs hija)")}},
      "position": pos(2, 19, 4, 6)},
+    # una fila por mes x compania en ds_comparativo (moneda unica): AVG devuelve el valor de la vista
+    {"widget": {"name": "l_variacion_mensual",
+                "queries": [q("main_query", "ds_comparativo", [
+                    fld("month_start", "`month_start`"), fld("company", "`company`"),
+                    fld("avg(revenue_mom_pct)", "AVG(`revenue_mom_pct`)")])],
+                "spec": {"version": 3, "widgetType": "line",
+                         "encodings": {"x": {"fieldName": "month_start", "scale": {"type": "temporal"}, "displayName": "Mes"},
+                                       "y": {"fieldName": "avg(revenue_mom_pct)", "scale": {"type": "quantitative"},
+                                             "displayName": "Variación vs mes anterior", "format": PCT},
+                                       "color": {"fieldName": "company", "scale": {"type": "categorical"}, "displayName": "Compañía"}},
+                         "frame": frame("Variación mensual de ingresos (madre vs hija)",
+                                        "revenue_mom_pct de v_kpi_company_comparison: ingresos del mes / mes anterior - 1")}},
+     "position": pos(0, 25, 6, 6)},
 ]
 
 
