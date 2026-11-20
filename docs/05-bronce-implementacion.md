@@ -18,7 +18,7 @@ Fuente de verdad de requisitos: `04-bronze-requisitos.md`.
 | Pruebas | `tests/` | 31 pruebas pytest |
 
 ### Datos sintéticos
-- Dominio propio (consumo masivo andino, PEN implícito): `madre` = ~28 productos y 1.500 clientes, `hija` = ~17 productos y 600 clientes (bares deportivos).
+- Dominio propio (consumo masivo andino, PEN implícito): `madre` = 27 productos y 1.500 clientes, `hija` = ~17 productos y 600 clientes (bares deportivos).
 - Layout: `data/generated/<compañía>/<fuente>/ingest_date=YYYY-MM-DD/<fuente>_<compañía>_<YYYYMMDD>.csv`.
 - Volumen por defecto (24 meses, 2024-01..2025-12, semilla 42): **1.606 archivos, 1.005.642 líneas de pedido, 36,7 MB, 2,8–3,9 s**.
   `customers` y `products` se emiten como snapshot **mensual** por defecto (`--dim-snapshots daily` para diario, ~730 archivos por fuente).
