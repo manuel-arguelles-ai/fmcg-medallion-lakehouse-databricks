@@ -8,3 +8,4 @@ __pycache__/
 .bundle/
 data/generated/
 *.log
+.playwright-mcp/

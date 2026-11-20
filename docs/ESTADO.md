@@ -11,13 +11,13 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 | H2 Datagen + landing | ✅ | 1.606 CSV subidos = 1.606 del MANIFEST; 1.005.642 líneas de pedido |
 | H3 Bronze (Auto Loader) | ✅ | Job desplegado y corrido en serverless: 8/8 tablas reconcilian con el MANIFEST (filas y archivos), 0 `_rescued_data`; 2.ª corrida = 0 archivos nuevos, 0 filas escritas (idempotente) |
 | H4 Silver | ✅ | DDL ejecutado (19 sentencias); `silver_transform` modo `full` en serverless: orders 699.699 + 296.754, cuarentena 4.633, prices 24 en cuarentena; coincide con `expected.py`. 2.ª corrida `full` con los mismos conteos |
-| H5 Gold | ✅ (falta KPI independiente) | `gold_build` en serverless, 7 tareas ok: fact_sales 996.453 = Silver; ingresos 37.450.346,40 PEN iguales en Silver, fact y agg; 6 vistas KPI responden; 2.ª corrida idéntica. Falta recalcular KPIs en Python desde los CSV (`docs/09` §7) |
-| H6 Orquestación end-to-end + incremental | 🟡 | job maestro `fmcg-medallion-pipeline` (Bronze → Silver → Gold → `reconcile`, escribe `ops.pipeline_runs` y falla si L1/L2/B1/B2/G1/G2 no cuadran) desplegado. Corrida `incremental` sin lote nuevo (run 1006275284101973, ~9,5 min): 8/8 compañía×entidad ok y foto Silver/cuarentena/Gold idéntica a la previa (incl. `_silver_updated_at`, gracias al MERGE `>` en incremental). Falta: subir el lote `hija/orders/ingest_date=2026-01-02` (25 filas, `src/datagen/increment.py`) y correr con lote nuevo; esperado hija/orders Silver 296.776, cuarentena ORD_03 4.634, fact_sales 996.475, ingreso 37.450.922,98 |
-| H7 Dashboard + Genie | ⛔ | — |
-| H8 README final + `.drawio` + GitHub | ⛔ | el `.drawio` ya está en `docs/`; falta README final y publicar |
+| H5 Gold | ✅ | `gold_build` en serverless, 7 tareas ok; ingresos iguales en Silver, `fact_sales` y `agg_sales_monthly`; 6 vistas KPI; KPIs recalculados en Python desde los CSV (`scripts/verify_gold_kpis.py`, 342 comparaciones OK, `docs/09` §8); 2.ª corrida idéntica |
+| H6 Orquestación end-to-end + incremental | ✅ | job maestro `fmcg-medallion-pipeline` (Bronze → Silver → Gold → `reconcile` con `ops.pipeline_runs`; falla si no cuadra). Lote incremental real (25 filas de hija, subido a landing): Bronze 305.968, Silver 296.776, cuarentena 4.634 y 996.475 líneas en Gold, todo igual a lo calculado antes en Python; ingreso 37.450.922,98 PEN; corrida incremental repetida sin cambios. Detalle: `docs/10b-incremental-y-orquestacion.md` |
+| H7 Dashboard + Genie | ✅ | dashboard AI/BI `FMCG Sales Insights` (12 datasets verificados, 2 páginas) y espacio Genie `FMCG Sales Genie` (4 preguntas contrastadas con SQL directo). Detalle y capturas: `docs/11-serving.md` |
+| H8 README final + `.drawio` + GitHub | 🟡 | `.drawio` en `docs/`; README final y publicación en curso |
 
 ## Pendientes (orden sugerido)
-1. **Moneda a USD** (decisión D26). Silver quedó con `rules.CURRENCY = "PEN"` (D26 revertida: se queda PEN) (`src/silver/rules.py:20`). Los precios de datagen (p. ej. 17.87, 3.45) no traen moneda en el CSV, así que el cambio es la constante + `docs/08-silver-implementacion.md` (D17, §6 duda 4) + regenerar `src/silver/sql/01_silver_ddl.sql` si lo referencia. Bronze no cambia. Estado: ⏳ no aplicado.
+1. ~~Moneda a USD~~ **Descartado**: D26 quedó en **PEN** (cierre sin reprocesos). USD queda como mejora futura.
 2. **Enlazar y correr Silver** ⛔: agregar `include: [resources/*.yml]` y `src/silver/**` en `sync.include` de `databricks.yml`; ejecutar antes `src/silver/sql/01_silver_ddl.sql` (**NO EJECUTADO**, con `infra/run_sql.py`, pide OK de Manu); `bundle validate` → `deploy` → correr `silver_transform` en modo `full`.
 3. **Validar Silver contra `src/silver/expected.py`** ⏳ (hija/orders: 296.754 en Silver y 4.633 en cuarentena; ver `docs/08` §5). Riesgos de Spark aún no probados: `try_element_at` vía `call_function`, patrón de fecha `MMMM d, yyyy`, comportamiento ANSI, `MERGE ... UPDATE SET *` desde vista temporal. (`try_to_date` vía `call_function` sí funciona: lo usa Bronce.)
 4. **Idempotencia e incremental de Silver** ⏳ (dos corridas iguales; modo `incremental` desde `staging_*`).
@@ -27,7 +27,7 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 8. Gold (H5), orquestación (H6), dashboard y Genie (H7), README final y publicación a GitHub (H8).
 
 ## Decisiones de Manu tomadas el 2026-11-19 (ver `02-decisiones.md`)
-- Moneda USD; precio no numérico va a cuarentena; `line_amount` se calcula en Silver; toda corrección o transformación va en Silver.
+- Moneda PEN (revierte USD); precio no numérico va a cuarentena; `line_amount` se calcula en Silver; toda corrección o transformación va en Silver.
 
 ## Verificado vs asumido
 - **Verificado:** todo H0–H3 (arriba), 101 pruebas pytest locales, `bundle validate`, exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
