@@ -1,0 +1,3 @@
+# Dependencias locales (desarrollo y pruebas). El datagen usa solo la libreria estandar.
+pyyaml>=6.0
+pytest>=8.0
