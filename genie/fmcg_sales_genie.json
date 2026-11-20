@@ -1,0 +1,127 @@
+{
+  "title": "FMCG Sales Genie",
+  "description": "Preguntas en lenguaje natural sobre las ventas FMCG (madre e hija) y la calidad de datos de Silver. Fuente: fmcg_lakehouse.gold. Montos en PEN.",
+  "tables": [
+    {
+      "identifier": "fmcg_lakehouse.gold.fact_sales",
+      "description": "Hecho de ventas a grano linea de pedido. Fuente de verdad para ingresos (SUM(line_amount)), cantidad (SUM(order_qty)) y pedidos (COUNT(DISTINCT order_id) por compania). Montos en la moneda de la columna currency (hoy PEN)."
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.dim_date",
+      "description": "Calendario diario en espanol; unir con fact_sales por date_sk. Tiene year, quarter, month, month_name, year_month."
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.dim_customer",
+      "description": "Clientes (SCD1). Unir con fact_sales por customer_sk. customer_sk = -1 es el cliente desconocido (is_unknown_member)."
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.dim_product",
+      "description": "Productos (SCD1) con categoria y division. Unir con fact_sales/agg_sales_monthly por product_sk. product_sk = -1 es el producto desconocido."
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.agg_sales_monthly",
+      "description": "Agregado mes x compania x cliente x producto derivado de fact_sales. revenue y total_qty son aditivos; orders NO es aditivo entre productos/clientes."
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_sales_monthly",
+      "description": "KPI por mes y compania: ingresos, cantidad, pedidos, lineas y ticket promedio. Usar para totales por periodo.",
+      "columns": {
+        "year": "anio calendario del pedido",
+        "revenue": "ingresos del mes = SUM(line_amount); lineas sin precio no suman",
+        "total_qty": "unidades vendidas en el mes",
+        "orders": "pedidos distintos en el mes y compania (sumable entre meses)",
+        "order_lines": "lineas de pedido del mes",
+        "lines_without_price": "lineas sin precio vigente (line_amount NULL)",
+        "avg_ticket": "ingreso promedio por pedido = revenue / orders"
+      }
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_top10_products",
+      "description": "Top 10 productos por ingresos por anio (period = '2024', '2025') y para todo el historico (period = 'Total'). RANK: los empates comparten puesto.",
+      "columns": {
+        "period": "anio como texto ('2024', '2025') o 'Total' para todo el periodo",
+        "revenue_rank": "puesto por ingresos dentro del periodo (1 = mayor)",
+        "revenue": "ingresos del producto en el periodo",
+        "total_qty": "unidades del producto en el periodo"
+      }
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_category_mix",
+      "description": "Mix de ingresos por division y categoria, por mes y compania.",
+      "columns": {
+        "year": "anio calendario",
+        "revenue": "ingresos de la categoria en el mes y compania",
+        "total_qty": "unidades de la categoria en el mes y compania",
+        "revenue_share": "participacion (0-1) de la categoria en los ingresos del mes de esa compania"
+      }
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_company_comparison",
+      "description": "Comparativo madre vs hija por mes: ingresos, pedidos, clientes activos, participacion y variacion mensual.",
+      "columns": {
+        "year": "anio calendario",
+        "revenue": "ingresos de la compania en el mes",
+        "total_qty": "unidades de la compania en el mes",
+        "orders": "pedidos distintos de la compania en el mes",
+        "active_customers": "clientes distintos con compra en el mes (sin el desconocido -1)",
+        "lines_unknown_customer": "lineas con cliente desconocido (customer_sk = -1)",
+        "avg_ticket": "ingreso promedio por pedido",
+        "revenue_share_month": "participacion (0-1) de la compania en los ingresos totales del mes",
+        "revenue_mom_pct": "variacion de ingresos vs el mes anterior de la misma compania (0.05 = +5%)"
+      }
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_data_quality",
+      "description": "Calidad de datos: resultado de cada regla de Silver en la ultima corrida por entidad (filas evaluadas y fallidas).",
+      "columns": {
+        "description": "que verifica la regla",
+        "severity": "error | warning | info",
+        "fail_rate": "rows_failed / rows_evaluated (0-1)"
+      }
+    },
+    {
+      "identifier": "fmcg_lakehouse.gold.v_kpi_quarantine_summary",
+      "description": "Filas enviadas a cuarentena en Silver por entidad, compania y regla.",
+      "columns": {
+        "entity": "customers | products | prices | orders",
+        "company": "madre | hija",
+        "rule_id": "regla de calidad que envio la fila a cuarentena (ver v_kpi_data_quality.description)",
+        "rows_quarantined": "filas en cuarentena",
+        "last_quarantined_at": "ultima vez que se envio una fila a cuarentena"
+      }
+    }
+  ],
+  "instructions": [
+    "Responde siempre en espanol.",
+    "Las companias son 'madre' e 'hija' (columna company). 'Ambas' o 'total' significa sumar las dos.",
+    "Ingresos = SUM(line_amount) en fact_sales o SUM(revenue) en las vistas/agregados. Todos los montos estan en la moneda de la columna currency (hoy PEN, soles peruanos): indica siempre la moneda.",
+    "Las lineas sin precio (price_missing = true, line_amount NULL) no suman ingresos pero si cuentan en cantidad y lineas.",
+    "Para pedidos usa COUNT(DISTINCT order_id) sobre fact_sales o la columna orders de v_kpi_sales_monthly; nunca sumes agg_sales_monthly.orders entre productos o clientes.",
+    "Para filtrar por anio, trimestre o mes usa dim_date (year, quarter, month) unida por date_sk, o las columnas year/quarter/month de las vistas v_kpi_*.",
+    "El cliente o producto desconocido tiene clave -1 (is_unknown_member = true); sus ventas cuentan en los totales, pero excluyelos de rankings de clientes/productos.",
+    "Para preguntas de calidad de datos usa v_kpi_data_quality (reglas y filas fallidas) y v_kpi_quarantine_summary (filas en cuarentena)."
+  ],
+  "sample_questions": [
+    "¿Cuáles son los ingresos totales y cuántas líneas de pedido hay?",
+    "¿Cuántos ingresos tuvo cada compañía (madre e hija) en 2025?",
+    "¿Cuáles son los 5 productos con más ingresos en 2024?",
+    "¿Cómo evolucionaron los ingresos mensuales de la hija en 2025?",
+    "¿Qué categoría aporta más ingresos a la madre?",
+    "¿Cuántas filas hay en cuarentena por regla?",
+    "¿Qué reglas de calidad tuvieron filas fallidas en pedidos de la hija?"
+  ],
+  "example_sqls": [
+    {
+      "question": "Ingresos totales y lineas de pedido por compania",
+      "sql": "SELECT company, currency, SUM(line_amount) AS ingresos, COUNT(*) AS lineas\nFROM fmcg_lakehouse.gold.fact_sales\nGROUP BY company, currency\nORDER BY ingresos DESC"
+    },
+    {
+      "question": "Ingresos mensuales por compania en un anio",
+      "sql": "SELECT year_month, company, currency, revenue, orders, avg_ticket\nFROM fmcg_lakehouse.gold.v_kpi_sales_monthly\nWHERE year = 2025\nORDER BY year_month, company"
+    },
+    {
+      "question": "Top productos por ingresos en un anio",
+      "sql": "SELECT revenue_rank, company, product_name, category, revenue, currency\nFROM fmcg_lakehouse.gold.v_kpi_top10_products\nWHERE period = '2024'\nORDER BY revenue_rank"
+    }
+  ]
+}
