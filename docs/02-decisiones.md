@@ -11,7 +11,7 @@
 | D7 | 2026-11-19 | Región `centralus`; el metastore UC regional es compartido y no se puede evitar sin cambiar de región | Manu / Nix |
 | D8 | 2026-11-19 | Catálogo propio `fmcg_lakehouse` (los nombres `fmcg` y `fmcg_dev` están ocupados por otro trabajo) | Nix (propuesto) |
 
-| D26 | 2026-11-19 | Moneda de la solución: **USD** (reemplaza la propuesta PEN del agente de Silver, D17) | Manu |
+| D26 | 2026-11-19 | Moneda de la solución: **PEN** (Manu revierte USD el mismo día: se cierra con PEN para no reprocesar y ganar tiempo; USD queda como mejora futura) | Manu |
 | D27 | 2026-11-19 | Precio no numérico → **cuarentena** en Silver (la alternativa "0 marcado" queda descartada por ahora) | Manu |
 | D28 | 2026-11-19 | `line_amount` se calcula en **Silver**; criterio general: toda corrección o transformación va en Silver | Manu |
 | D29 | 2026-11-19 | `databricks bundle deploy` con motor `direct` (el motor Terraform falla por clave GPG expirada en el CLI v0.288) | Nix |

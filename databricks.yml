@@ -9,10 +9,14 @@ variables:
     description: Catalogo de Unity Catalog de la solucion
     default: fmcg_lakehouse
 
+include:
+  - resources/silver_job.yml
+
 # Sincroniza solo el codigo necesario al workspace.
 sync:
   include:
     - src/bronze/**
+    - src/silver/**
   exclude:
     - src/datagen/**
 
