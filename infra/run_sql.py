@@ -15,9 +15,20 @@ import time
 
 
 def split_statements(text: str) -> list[str]:
-    """Quita comentarios de linea (--) y separa por ';' (el SQL del repo no usa ';' dentro de literales)."""
+    """Quita comentarios de linea (--) y separa por ';' fuera de literales '...' (acepta '' escapado)."""
     lines = [re.sub(r"^\s*--.*$", "", ln) for ln in text.splitlines()]
-    return [s.strip() for s in "\n".join(lines).split(";") if s.strip()]
+    text = "\n".join(lines)
+    out, buf, in_str = [], [], False
+    for ch in text:
+        if ch == "'":
+            in_str = not in_str
+        if ch == ";" and not in_str:
+            out.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    out.append("".join(buf))
+    return [x.strip() for x in out if x.strip()]
 
 
 def api(method: str, path: str, body: dict | None = None) -> dict:
