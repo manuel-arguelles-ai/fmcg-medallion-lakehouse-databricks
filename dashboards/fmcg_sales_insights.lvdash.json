@@ -1,0 +1,1719 @@
+{
+  "datasets": [
+    {
+      "name": "ds_ventas_mes",
+      "displayName": "Ventas por mes y compañía",
+      "queryLines": [
+        "SELECT * FROM (\n",
+        "SELECT year, quarter, month, month_start, year_month, company, currency,\n",
+        "  revenue, total_qty, orders, order_lines, lines_without_price\n",
+        "FROM fmcg_lakehouse.gold.v_kpi_sales_monthly\n",
+        ") WHERE (:p_anio = 'Todos' OR CAST(year AS STRING) = :p_anio)\n",
+        "  AND (:p_trimestre = 'Todos' OR CAST(quarter AS STRING) = :p_trimestre)\n",
+        "  AND (:p_mes = 'Todos' OR CAST(month AS STRING) = :p_mes)\n",
+        "  AND (:p_compania = 'Todos' OR company = :p_compania)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "p_anio",
+          "keyword": "p_anio",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_trimestre",
+          "keyword": "p_trimestre",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_mes",
+          "keyword": "p_mes",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_compania",
+          "keyword": "p_compania",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ds_categoria",
+      "displayName": "Mix por categoría",
+      "queryLines": [
+        "SELECT * FROM (\n",
+        "SELECT a.year, a.quarter, a.month, a.month_start, a.company, a.currency,\n",
+        "  p.division, p.category, SUM(a.revenue) AS revenue, SUM(a.total_qty) AS total_qty\n",
+        "FROM fmcg_lakehouse.gold.agg_sales_monthly a\n",
+        "JOIN fmcg_lakehouse.gold.dim_product p ON p.product_sk = a.product_sk\n",
+        "GROUP BY ALL\n",
+        ") WHERE (:p_anio = 'Todos' OR CAST(year AS STRING) = :p_anio)\n",
+        "  AND (:p_trimestre = 'Todos' OR CAST(quarter AS STRING) = :p_trimestre)\n",
+        "  AND (:p_mes = 'Todos' OR CAST(month AS STRING) = :p_mes)\n",
+        "  AND (:p_compania = 'Todos' OR company = :p_compania)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "p_anio",
+          "keyword": "p_anio",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_trimestre",
+          "keyword": "p_trimestre",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_mes",
+          "keyword": "p_mes",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_compania",
+          "keyword": "p_compania",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ds_top10",
+      "displayName": "Top 10 productos (parametrizado)",
+      "queryLines": [
+        "WITH f AS (\n",
+        "  SELECT p.company, p.product_name, p.category, a.currency,\n",
+        "    SUM(a.revenue) AS revenue, SUM(a.total_qty) AS total_qty\n",
+        "  FROM fmcg_lakehouse.gold.agg_sales_monthly a\n",
+        "  JOIN fmcg_lakehouse.gold.dim_product p ON p.product_sk = a.product_sk\n",
+        "  WHERE (:p_anio = 'Todos' OR CAST(a.year AS STRING) = :p_anio)\n",
+        "    AND (:p_trimestre = 'Todos' OR CAST(a.quarter AS STRING) = :p_trimestre)\n",
+        "    AND (:p_mes = 'Todos' OR CAST(a.month AS STRING) = :p_mes)\n",
+        "    AND (:p_compania = 'Todos' OR a.company = :p_compania)\n",
+        "  GROUP BY p.company, p.product_name, p.category, a.currency\n",
+        ")\n",
+        "SELECT RANK() OVER (ORDER BY revenue DESC NULLS LAST) AS revenue_rank,\n",
+        "  CONCAT(product_name, ' (', company, ')') AS product_label, *\n",
+        "FROM f\n",
+        "QUALIFY revenue_rank <= 10\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "p_anio",
+          "keyword": "p_anio",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_trimestre",
+          "keyword": "p_trimestre",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_mes",
+          "keyword": "p_mes",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_compania",
+          "keyword": "p_compania",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ds_comparativo",
+      "displayName": "Comparativo madre vs hija",
+      "queryLines": [
+        "SELECT * FROM (\n",
+        "SELECT year, QUARTER(month_start) AS quarter, MONTH(month_start) AS month, month_start,\n",
+        "  company, currency, revenue, total_qty, orders, active_customers, lines_unknown_customer,\n",
+        "  avg_ticket, revenue_share_month, revenue_mom_pct\n",
+        "FROM fmcg_lakehouse.gold.v_kpi_company_comparison\n",
+        ") WHERE (:p_anio = 'Todos' OR CAST(year AS STRING) = :p_anio)\n",
+        "  AND (:p_trimestre = 'Todos' OR CAST(quarter AS STRING) = :p_trimestre)\n",
+        "  AND (:p_mes = 'Todos' OR CAST(month AS STRING) = :p_mes)\n",
+        "  AND (:p_compania = 'Todos' OR company = :p_compania)\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "p_anio",
+          "keyword": "p_anio",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_trimestre",
+          "keyword": "p_trimestre",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_mes",
+          "keyword": "p_mes",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "p_compania",
+          "keyword": "p_compania",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ds_f_anio",
+      "displayName": "Filtro: años",
+      "queryLines": [
+        "SELECT valor FROM (\n",
+        "  SELECT 'Todos' AS valor, 0 AS orden\n",
+        "  UNION ALL\n",
+        "  SELECT DISTINCT CAST(year AS STRING), year FROM fmcg_lakehouse.gold.v_kpi_sales_monthly\n",
+        ") ORDER BY orden, valor\n"
+      ]
+    },
+    {
+      "name": "ds_f_trimestre",
+      "displayName": "Filtro: trimestres",
+      "queryLines": [
+        "SELECT valor FROM (\n",
+        "  SELECT 'Todos' AS valor, 0 AS orden\n",
+        "  UNION ALL\n",
+        "  SELECT DISTINCT CAST(quarter AS STRING), quarter FROM fmcg_lakehouse.gold.v_kpi_sales_monthly\n",
+        ") ORDER BY orden, valor\n"
+      ]
+    },
+    {
+      "name": "ds_f_mes",
+      "displayName": "Filtro: meses",
+      "queryLines": [
+        "SELECT valor FROM (\n",
+        "  SELECT 'Todos' AS valor, 0 AS orden\n",
+        "  UNION ALL\n",
+        "  SELECT DISTINCT CAST(month AS STRING), month FROM fmcg_lakehouse.gold.v_kpi_sales_monthly\n",
+        ") ORDER BY orden, valor\n"
+      ]
+    },
+    {
+      "name": "ds_f_compania",
+      "displayName": "Filtro: compañías",
+      "queryLines": [
+        "SELECT valor FROM (\n",
+        "  SELECT 'Todos' AS valor, 0 AS orden\n",
+        "  UNION ALL\n",
+        "  SELECT DISTINCT CAST(company AS STRING), 1 FROM fmcg_lakehouse.gold.v_kpi_sales_monthly\n",
+        ") ORDER BY orden, valor\n"
+      ]
+    },
+    {
+      "name": "ds_calidad",
+      "displayName": "Reglas de calidad con filas fallidas (última corrida Silver)",
+      "queryLines": [
+        "SELECT entity, company, rule_id, description, severity, action,\n",
+        "  rows_evaluated, rows_failed, fail_rate, mode, batch_id, ts\n",
+        "FROM fmcg_lakehouse.gold.v_kpi_data_quality\n",
+        "WHERE rows_failed > 0\n"
+      ]
+    },
+    {
+      "name": "ds_cuarentena",
+      "displayName": "Cuarentena por entidad y regla",
+      "queryLines": [
+        "SELECT entity, company, rule_id, rows_quarantined, last_quarantined_at\n",
+        "FROM fmcg_lakehouse.gold.v_kpi_quarantine_summary\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "ventas",
+      "displayName": "Ventas",
+      "layout": [
+        {
+          "widget": {
+            "name": "f_anio",
+            "queries": [
+              {
+                "name": "f_anio_valores",
+                "query": {
+                  "datasetName": "ds_f_anio",
+                  "fields": [
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_anio_param_ds_ventas_mes",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "parameters": [
+                    {
+                      "name": "p_anio",
+                      "keyword": "p_anio"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_anio_param_ds_categoria",
+                "query": {
+                  "datasetName": "ds_categoria",
+                  "parameters": [
+                    {
+                      "name": "p_anio",
+                      "keyword": "p_anio"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_anio_param_ds_comparativo",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "parameters": [
+                    {
+                      "name": "p_anio",
+                      "keyword": "p_anio"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_anio_param_ds_top10",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "parameters": [
+                    {
+                      "name": "p_anio",
+                      "keyword": "p_anio"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Año",
+                    "queryName": "f_anio_valores"
+                  },
+                  {
+                    "parameterName": "p_anio",
+                    "queryName": "f_anio_param_ds_ventas_mes"
+                  },
+                  {
+                    "parameterName": "p_anio",
+                    "queryName": "f_anio_param_ds_categoria"
+                  },
+                  {
+                    "parameterName": "p_anio",
+                    "queryName": "f_anio_param_ds_comparativo"
+                  },
+                  {
+                    "parameterName": "p_anio",
+                    "queryName": "f_anio_param_ds_top10"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Año"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_trimestre",
+            "queries": [
+              {
+                "name": "f_trimestre_valores",
+                "query": {
+                  "datasetName": "ds_f_trimestre",
+                  "fields": [
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_trimestre_param_ds_ventas_mes",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "parameters": [
+                    {
+                      "name": "p_trimestre",
+                      "keyword": "p_trimestre"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_trimestre_param_ds_categoria",
+                "query": {
+                  "datasetName": "ds_categoria",
+                  "parameters": [
+                    {
+                      "name": "p_trimestre",
+                      "keyword": "p_trimestre"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_trimestre_param_ds_comparativo",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "parameters": [
+                    {
+                      "name": "p_trimestre",
+                      "keyword": "p_trimestre"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_trimestre_param_ds_top10",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "parameters": [
+                    {
+                      "name": "p_trimestre",
+                      "keyword": "p_trimestre"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Trimestre",
+                    "queryName": "f_trimestre_valores"
+                  },
+                  {
+                    "parameterName": "p_trimestre",
+                    "queryName": "f_trimestre_param_ds_ventas_mes"
+                  },
+                  {
+                    "parameterName": "p_trimestre",
+                    "queryName": "f_trimestre_param_ds_categoria"
+                  },
+                  {
+                    "parameterName": "p_trimestre",
+                    "queryName": "f_trimestre_param_ds_comparativo"
+                  },
+                  {
+                    "parameterName": "p_trimestre",
+                    "queryName": "f_trimestre_param_ds_top10"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Trimestre"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_mes",
+            "queries": [
+              {
+                "name": "f_mes_valores",
+                "query": {
+                  "datasetName": "ds_f_mes",
+                  "fields": [
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_mes_param_ds_ventas_mes",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "parameters": [
+                    {
+                      "name": "p_mes",
+                      "keyword": "p_mes"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_mes_param_ds_categoria",
+                "query": {
+                  "datasetName": "ds_categoria",
+                  "parameters": [
+                    {
+                      "name": "p_mes",
+                      "keyword": "p_mes"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_mes_param_ds_comparativo",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "parameters": [
+                    {
+                      "name": "p_mes",
+                      "keyword": "p_mes"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_mes_param_ds_top10",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "parameters": [
+                    {
+                      "name": "p_mes",
+                      "keyword": "p_mes"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Mes",
+                    "queryName": "f_mes_valores"
+                  },
+                  {
+                    "parameterName": "p_mes",
+                    "queryName": "f_mes_param_ds_ventas_mes"
+                  },
+                  {
+                    "parameterName": "p_mes",
+                    "queryName": "f_mes_param_ds_categoria"
+                  },
+                  {
+                    "parameterName": "p_mes",
+                    "queryName": "f_mes_param_ds_comparativo"
+                  },
+                  {
+                    "parameterName": "p_mes",
+                    "queryName": "f_mes_param_ds_top10"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mes"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "f_compania",
+            "queries": [
+              {
+                "name": "f_compania_valores",
+                "query": {
+                  "datasetName": "ds_f_compania",
+                  "fields": [
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_compania_param_ds_ventas_mes",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "parameters": [
+                    {
+                      "name": "p_compania",
+                      "keyword": "p_compania"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_compania_param_ds_categoria",
+                "query": {
+                  "datasetName": "ds_categoria",
+                  "parameters": [
+                    {
+                      "name": "p_compania",
+                      "keyword": "p_compania"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_compania_param_ds_comparativo",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "parameters": [
+                    {
+                      "name": "p_compania",
+                      "keyword": "p_compania"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "f_compania_param_ds_top10",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "parameters": [
+                    {
+                      "name": "p_compania",
+                      "keyword": "p_compania"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Compañía",
+                    "queryName": "f_compania_valores"
+                  },
+                  {
+                    "parameterName": "p_compania",
+                    "queryName": "f_compania_param_ds_ventas_mes"
+                  },
+                  {
+                    "parameterName": "p_compania",
+                    "queryName": "f_compania_param_ds_categoria"
+                  },
+                  {
+                    "parameterName": "p_compania",
+                    "queryName": "f_compania_param_ds_comparativo"
+                  },
+                  {
+                    "parameterName": "p_compania",
+                    "queryName": "f_compania_param_ds_top10"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Compañía"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "t_moneda",
+            "multilineTextboxSpec": {
+              "lines": [
+                "**Montos en PEN** (moneda de Silver). Fuente: `fmcg_lakehouse.gold`."
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "c_ingresos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "fields": [
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue)",
+                  "displayName": "Ingresos (PEN)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ingresos (PEN)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_cantidad",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "fields": [
+                    {
+                      "name": "sum(total_qty)",
+                      "expression": "SUM(`total_qty`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_qty)",
+                  "displayName": "Cantidad vendida",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cantidad vendida"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_pedidos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "fields": [
+                    {
+                      "name": "sum(orders)",
+                      "expression": "SUM(`orders`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(orders)",
+                  "displayName": "Pedidos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "l_tendencia",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_ventas_mes",
+                  "fields": [
+                    {
+                      "name": "month_start",
+                      "expression": "`month_start`"
+                    },
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "month_start",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mes"
+                },
+                "y": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Ingresos (PEN)"
+                },
+                "color": {
+                  "fieldName": "company",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Compañía"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Tendencia mensual de ingresos: madre vs hija"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b_top10",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_top10",
+                  "fields": [
+                    {
+                      "name": "product_label",
+                      "expression": "`product_label`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Ingresos (PEN)"
+                },
+                "y": {
+                  "fieldName": "product_label",
+                  "displayName": "Producto",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 productos por ingresos",
+                "showDescription": true,
+                "description": "Empates comparten puesto (RANK)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "p_categoria",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_categoria",
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Ingresos (PEN)"
+                },
+                "color": {
+                  "fieldName": "category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Categoría"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mix de ingresos por categoría"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "b_comparativo",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "fields": [
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "company",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Compañía"
+                },
+                "y": {
+                  "fieldName": "sum(revenue)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Ingresos (PEN)"
+                },
+                "color": {
+                  "fieldName": "company",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Compañía"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Comparativo madre vs hija: ingresos"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "l_participacion",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_comparativo",
+                  "fields": [
+                    {
+                      "name": "month_start",
+                      "expression": "`month_start`"
+                    },
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "avg(revenue_share_month)",
+                      "expression": "AVG(`revenue_share_month`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "month_start",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mes"
+                },
+                "y": {
+                  "fieldName": "avg(revenue_share_month)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Participación en el mes",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "company",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Compañía"
+                }
+              },
+              "mark": {
+                "layout": "stack"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Participación mensual en ingresos (madre vs hija)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 19,
+            "width": 4,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "calidad",
+      "displayName": "Calidad de datos",
+      "layout": [
+        {
+          "widget": {
+            "name": "t_calidad",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Reglas de calidad de **Silver** con filas fallidas en la última corrida por entidad (`gold.v_kpi_data_quality`) y filas enviadas a cuarentena (`gold.v_kpi_quarantine_summary`)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "c_cuarentena",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cuarentena",
+                  "fields": [
+                    {
+                      "name": "sum(rows_quarantined)",
+                      "expression": "SUM(`rows_quarantined`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(rows_quarantined)",
+                  "displayName": "Filas en cuarentena",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filas en cuarentena"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_reglas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_calidad",
+                  "fields": [
+                    {
+                      "name": "count_distinct(rule_id)",
+                      "expression": "COUNT(DISTINCT `rule_id`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count_distinct(rule_id)",
+                  "displayName": "Reglas con filas fallidas"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reglas con filas fallidas"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "c_fallidas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_calidad",
+                  "fields": [
+                    {
+                      "name": "sum(rows_failed)",
+                      "expression": "SUM(`rows_failed`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(rows_failed)",
+                  "displayName": "Filas marcadas/corregidas/rechazadas",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filas marcadas/corregidas/rechazadas"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "b_cuarentena",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cuarentena",
+                  "fields": [
+                    {
+                      "name": "rule_id",
+                      "expression": "`rule_id`"
+                    },
+                    {
+                      "name": "entity",
+                      "expression": "`entity`"
+                    },
+                    {
+                      "name": "sum(rows_quarantined)",
+                      "expression": "SUM(`rows_quarantined`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "rule_id",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Regla"
+                },
+                "y": {
+                  "fieldName": "sum(rows_quarantined)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Filas en cuarentena"
+                },
+                "color": {
+                  "fieldName": "entity",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Entidad"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cuarentena por regla"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tb_cuarentena",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_cuarentena",
+                  "fields": [
+                    {
+                      "name": "entity",
+                      "expression": "`entity`"
+                    },
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "rule_id",
+                      "expression": "`rule_id`"
+                    },
+                    {
+                      "name": "rows_quarantined",
+                      "expression": "`rows_quarantined`"
+                    },
+                    {
+                      "name": "last_quarantined_at",
+                      "expression": "`last_quarantined_at`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "entity",
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "company",
+                    "displayName": "Compañía"
+                  },
+                  {
+                    "fieldName": "rule_id",
+                    "displayName": "Regla"
+                  },
+                  {
+                    "fieldName": "rows_quarantined",
+                    "displayName": "Filas"
+                  },
+                  {
+                    "fieldName": "last_quarantined_at",
+                    "displayName": "Última cuarentena"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Detalle de cuarentena"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 4,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tb_calidad",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_calidad",
+                  "fields": [
+                    {
+                      "name": "entity",
+                      "expression": "`entity`"
+                    },
+                    {
+                      "name": "company",
+                      "expression": "`company`"
+                    },
+                    {
+                      "name": "rule_id",
+                      "expression": "`rule_id`"
+                    },
+                    {
+                      "name": "description",
+                      "expression": "`description`"
+                    },
+                    {
+                      "name": "severity",
+                      "expression": "`severity`"
+                    },
+                    {
+                      "name": "action",
+                      "expression": "`action`"
+                    },
+                    {
+                      "name": "rows_evaluated",
+                      "expression": "`rows_evaluated`"
+                    },
+                    {
+                      "name": "rows_failed",
+                      "expression": "`rows_failed`"
+                    },
+                    {
+                      "name": "fail_rate",
+                      "expression": "`fail_rate`"
+                    },
+                    {
+                      "name": "ts",
+                      "expression": "`ts`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "entity",
+                    "displayName": "Entidad"
+                  },
+                  {
+                    "fieldName": "company",
+                    "displayName": "Compañía"
+                  },
+                  {
+                    "fieldName": "rule_id",
+                    "displayName": "Regla"
+                  },
+                  {
+                    "fieldName": "description",
+                    "displayName": "Descripción"
+                  },
+                  {
+                    "fieldName": "severity",
+                    "displayName": "Severidad"
+                  },
+                  {
+                    "fieldName": "action",
+                    "displayName": "Acción"
+                  },
+                  {
+                    "fieldName": "rows_evaluated",
+                    "displayName": "Evaluadas"
+                  },
+                  {
+                    "fieldName": "rows_failed",
+                    "displayName": "Fallidas"
+                  },
+                  {
+                    "fieldName": "fail_rate",
+                    "displayName": "Tasa de fallo"
+                  },
+                  {
+                    "fieldName": "ts",
+                    "displayName": "Corrida"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Reglas con filas fallidas (última corrida de Silver por entidad)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 10
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}
