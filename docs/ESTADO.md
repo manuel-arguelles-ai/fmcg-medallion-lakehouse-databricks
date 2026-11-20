@@ -1,7 +1,7 @@
 # Estado vivo del proyecto
 
 Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ sin implementar · ⏳ sin verificar.
-Última actualización: 2026-11-19 (cierre de sesión 1).
+Última actualización: 2026-11-19 (sesión 2: Silver y Gold corridos en el workspace).
 
 ## Estado por hito
 | Hito | Estado | Evidencia |
@@ -10,14 +10,14 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 | H1 Unity Catalog | ✅ | credencial `cred_fmcg_lakehouse`, 5 external locations, catálogo `fmcg_lakehouse`, 5 esquemas, 2 volumes, 3 tablas `ops.*`, 8 filas en `ops.source_registry` (verificado con consulta) |
 | H2 Datagen + landing | ✅ | 1.606 CSV subidos = 1.606 del MANIFEST; 1.005.642 líneas de pedido |
 | H3 Bronze (Auto Loader) | ✅ | Job desplegado y corrido en serverless: 8/8 tablas reconcilian con el MANIFEST (filas y archivos), 0 `_rescued_data`; 2.ª corrida = 0 archivos nuevos, 0 filas escritas (idempotente) |
-| H4 Silver | 🟡 | Código y 101 pruebas locales ✅; **nunca corrió en Spark/workspace** ⏳ |
-| H5 Gold | ⛔ | solo diseño (`03-diseno-solucion.md` §5.3) |
-| H6 Orquestación end-to-end + incremental | ⛔ | bundle solo tiene Bronze; `resources/silver_job.yml` sin enlazar |
+| H4 Silver | ✅ | DDL ejecutado (19 sentencias); `silver_transform` modo `full` en serverless: orders 699.699 + 296.754, cuarentena 4.633, prices 24 en cuarentena; coincide con `expected.py`. 2.ª corrida `full` con los mismos conteos |
+| H5 Gold | ✅ (falta KPI independiente) | `gold_build` en serverless, 7 tareas ok: fact_sales 996.453 = Silver; ingresos 37.450.346,40 PEN iguales en Silver, fact y agg; 6 vistas KPI responden; 2.ª corrida idéntica. Falta recalcular KPIs en Python desde los CSV (`docs/09` §7) |
+| H6 Orquestación end-to-end + incremental | ⛔ | jobs Bronze, Silver y Gold por separado; falta un job maestro y probar `incremental` |
 | H7 Dashboard + Genie | ⛔ | — |
 | H8 README final + `.drawio` + GitHub | ⛔ | el `.drawio` ya está en `docs/`; falta README final y publicar |
 
 ## Pendientes (orden sugerido)
-1. **Moneda a USD** (decisión D26). Silver quedó con `rules.CURRENCY = "PEN"` (`src/silver/rules.py:20`). Los precios de datagen (p. ej. 17.87, 3.45) no traen moneda en el CSV, así que el cambio es la constante + `docs/08-silver-implementacion.md` (D17, §6 duda 4) + regenerar `src/silver/sql/01_silver_ddl.sql` si lo referencia. Bronze no cambia. Estado: ⏳ no aplicado.
+1. **Moneda a USD** (decisión D26). Silver quedó con `rules.CURRENCY = "PEN"` (D26 revertida: se queda PEN) (`src/silver/rules.py:20`). Los precios de datagen (p. ej. 17.87, 3.45) no traen moneda en el CSV, así que el cambio es la constante + `docs/08-silver-implementacion.md` (D17, §6 duda 4) + regenerar `src/silver/sql/01_silver_ddl.sql` si lo referencia. Bronze no cambia. Estado: ⏳ no aplicado.
 2. **Enlazar y correr Silver** ⛔: agregar `include: [resources/*.yml]` y `src/silver/**` en `sync.include` de `databricks.yml`; ejecutar antes `src/silver/sql/01_silver_ddl.sql` (**NO EJECUTADO**, con `infra/run_sql.py`, pide OK de Manu); `bundle validate` → `deploy` → correr `silver_transform` en modo `full`.
 3. **Validar Silver contra `src/silver/expected.py`** ⏳ (hija/orders: 296.754 en Silver y 4.633 en cuarentena; ver `docs/08` §5). Riesgos de Spark aún no probados: `try_element_at` vía `call_function`, patrón de fecha `MMMM d, yyyy`, comportamiento ANSI, `MERGE ... UPDATE SET *` desde vista temporal. (`try_to_date` vía `call_function` sí funciona: lo usa Bronce.)
 4. **Idempotencia e incremental de Silver** ⏳ (dos corridas iguales; modo `incremental` desde `staging_*`).

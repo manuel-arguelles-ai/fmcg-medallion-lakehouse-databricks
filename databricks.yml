@@ -11,12 +11,14 @@ variables:
 
 include:
   - resources/silver_job.yml
+  - resources/gold_job.yml
 
 # Sincroniza solo el codigo necesario al workspace.
 sync:
   include:
     - src/bronze/**
     - src/silver/**
+    - src/gold/**
   exclude:
     - src/datagen/**
 
