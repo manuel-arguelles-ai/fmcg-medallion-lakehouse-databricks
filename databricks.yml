@@ -1,5 +1,6 @@
 # Asset Bundle de la solucion FMCG: jobs Bronze, Silver, Gold y el maestro fmcg-medallion-pipeline
-# (Bronze -> Silver -> Gold -> reconciliacion). Desplegado en dev (ver docs/ESTADO.md y docs/10b).
+# (Bronze -> Silver -> Gold -> reconciliacion) y el dashboard AI/BI (resources/dashboard.yml).
+# Desplegado en dev (ver docs/ESTADO.md, docs/10b y docs/11).
 # Validar:   databricks bundle validate -t dev
 # Desplegar: databricks bundle deploy -t dev   (con DATABRICKS_BUNDLE_ENGINE=direct; ver trampas en ESTADO)
 bundle:
@@ -14,6 +15,7 @@ include:
   - resources/silver_job.yml
   - resources/gold_job.yml
   - resources/pipeline_job.yml
+  - resources/dashboard.yml
 
 # Sincroniza solo el codigo necesario al workspace.
 sync:

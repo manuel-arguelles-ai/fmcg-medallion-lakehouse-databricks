@@ -147,3 +147,13 @@ def test_master_job_has_paused_schedule_and_retries():
                 assert "max_retries" not in t, (name, t["task_key"])
             else:
                 assert t["max_retries"] == 1 and t["min_retry_interval_millis"] >= 60000, (name, t["task_key"])
+
+
+def test_bundle_declares_the_versioned_dashboard():
+    """SRV-01: el dashboard del repo esta declarado como recurso del bundle (enlazado al existente)."""
+    b = yaml.safe_load((ROOT / "databricks.yml").read_text(encoding="utf-8"))
+    assert "resources/dashboard.yml" in b["include"]
+    d = yaml.safe_load((ROOT / "resources" / "dashboard.yml").read_text(encoding="utf-8"))
+    dash = d["resources"]["dashboards"]["fmcg_sales_insights"]
+    assert (ROOT / "resources" / dash["file_path"]).resolve() == ROOT / "dashboards" / "fmcg_sales_insights.lvdash.json"
+    assert dash["embed_credentials"] is True and dash["warehouse_id"]

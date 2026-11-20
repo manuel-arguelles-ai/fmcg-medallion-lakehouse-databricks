@@ -1,6 +1,9 @@
 """Crea o actualiza (idempotente) el dashboard AI/BI 'FMCG Sales Insights' y lo publica.
 
 Fuente de verdad: dashboards/fmcg_sales_insights.lvdash.json (Lakeview serializado).
+Via preferida: el dashboard esta declarado en el bundle (resources/dashboard.yml, enlazado con
+`databricks bundle deployment bind` al mismo id) y se despliega con `databricks bundle deploy -t dev`.
+Este script queda como alternativa sin bundle y para --verify / --export.
 Busca un dashboard ACTIVO con el mismo nombre en la carpeta destino: si existe lo actualiza (PATCH),
 si no lo crea (POST). Luego lo publica con credenciales embebidas sobre el warehouse indicado.
 Usa el CLI de Databricks ya autenticado (no maneja credenciales; nunca hace login).
@@ -45,7 +48,10 @@ def find(name: str, parent: str) -> dict | None:
         path = "/api/2.0/lakeview/dashboards?page_size=100" + (f"&page_token={token}" if token else "")
         r = api("get", path)
         for d in r.get("dashboards", []):
-            if d.get("display_name") != name or d.get("lifecycle_state", "ACTIVE") != "ACTIVE":
+            # el bundle (resources/dashboard.yml, target dev) le antepone "[dev <usuario>] " al nombre
+            dn = d.get("display_name", "")
+            if not (dn == name or (dn.startswith("[dev ") and dn.endswith("] " + name))) \
+                    or d.get("lifecycle_state", "ACTIVE") != "ACTIVE":
                 continue
             # el listado no trae la ruta: se consulta el dashboard para comparar la carpeta
             full = api("get", f"/api/2.0/lakeview/dashboards/{d['dashboard_id']}")
@@ -120,7 +126,8 @@ def main() -> int:
         if not verify(dash, a.warehouse):
             return 1
 
-    body = {"display_name": a.name, "warehouse_id": a.warehouse,
+    # conserva el nombre actual (con el prefijo dev del bundle) para no pelear con `bundle deploy`
+    body = {"display_name": existing["display_name"] if existing else a.name, "warehouse_id": a.warehouse,
             "serialized_dashboard": json.dumps(dash, ensure_ascii=False)}
     action = f"PATCH {existing['dashboard_id']}" if existing else f"POST en {parent}"
     if a.dry_run:

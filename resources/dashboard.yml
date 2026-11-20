@@ -1,0 +1,15 @@
+# Dashboard AI/BI "FMCG Sales Insights" como recurso del bundle (SRV-01). Fuente: el JSON versionado, que
+# regenera dashboards/build_fmcg_sales_insights.py.
+# El recurso se ENLAZO al dashboard que ya existia (no se creo otro):
+#   databricks bundle deployment bind fmcg_sales_insights <dashboard-id> -t dev
+# En el target dev (mode: development) el bundle antepone "[dev <usuario>] " al nombre; mismo id y URLs.
+# parent_path fijo = carpeta donde ya vivia (cambiarlo obligaria a recrearlo). Si se edita en la UI, bajar el
+# borrador antes de desplegar (infra/03-deploy-dashboard.py --export o `databricks bundle generate dashboard`).
+resources:
+  dashboards:
+    fmcg_sales_insights:
+      display_name: FMCG Sales Insights
+      file_path: ../dashboards/fmcg_sales_insights.lvdash.json
+      warehouse_id: <warehouse-id>
+      parent_path: /Workspace/Users/<owner-email>
+      embed_credentials: true
