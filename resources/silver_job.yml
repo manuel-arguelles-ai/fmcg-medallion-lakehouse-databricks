@@ -1,0 +1,48 @@
+# Job de Asset Bundle: Silver (Bronze -> Silver). NO incluido en databricks.yml todavia: para enlazarlo
+#   1) agregar en databricks.yml:   include: [resources/*.yml]
+#   2) agregar `src/silver/**` a sync.include (el codigo debe subir al workspace)
+# NO DESPLEGADO / NO EJECUTADO. Requiere antes sql/01_silver_ddl.sql (o lo hace la propia tarea: setup idempotente).
+# Dependencias: customers y products no dependen entre si; prices <- products; orders <- prices + customers
+# (orders resuelve clientes/productos contra Silver y calcula montos con el precio vigente del mes).
+# Cada tarea procesa madre e hija. Parametros del job: catalog, mode (incremental | full).
+resources:
+  jobs:
+    silver_transform:
+      name: fmcg-silver-transform
+      description: Silver (limpieza, dedup, conformado madre+hija, cuarentena y dq_results). Una tarea por entidad.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: mode
+          default: incremental
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+      tasks:
+        - task_key: customers
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/silver/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "customers", "--mode", "{{job.parameters.mode}}"]
+        - task_key: products
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/silver/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "products", "--mode", "{{job.parameters.mode}}"]
+        - task_key: prices
+          depends_on:
+            - task_key: products
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/silver/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "prices", "--mode", "{{job.parameters.mode}}"]
+        - task_key: orders
+          depends_on:
+            - task_key: prices
+            - task_key: customers
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/silver/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "orders", "--mode", "{{job.parameters.mode}}"]
