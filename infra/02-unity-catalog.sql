@@ -1,5 +1,5 @@
 -- =====================================================================================
--- NO EJECUTADO — requiere confirmacion de Manu.
+-- EJECUTADO el 2026-11-19 con confirmacion de Manu (via infra/run_sql.py; credencial por CLI).
 -- Unity Catalog de la solucion FMCG: external locations, catalogo, esquemas, volumes y tablas ops.
 -- Ejecutar paso a paso en un SQL warehouse / notebook como metastore admin (o con los privilegios
 -- indicados). Cada bloque es idempotente (IF NOT EXISTS).
@@ -14,7 +14,7 @@
 --      -n ac-fmcg-lakehouse-dev-cus-001 --query id -o tsv
 -- Crear la credencial (requiere CREATE_STORAGE_CREDENTIAL en el metastore):
 --   export DATABRICKS_HOST=https://<workspace-host> DATABRICKS_AUTH_TYPE=azure-cli
---   databricks storage-credentials create cred_fmcg_lakehouse --json '{
+--   databricks storage-credentials create --json '{"name": "cred_fmcg_lakehouse",
 --     "azure_managed_identity": {"access_connector_id": "<ACCESS_CONNECTOR_RESOURCE_ID>"},
 --     "comment": "Access Connector ac-fmcg-lakehouse-dev-cus-001 (solucion FMCG)"}'
 -- Verificar: databricks storage-credentials get cred_fmcg_lakehouse
