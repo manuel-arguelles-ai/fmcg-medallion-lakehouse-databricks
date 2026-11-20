@@ -20,13 +20,13 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 1. ~~Moneda a USD~~ **Descartado**: D26 quedó en **PEN** (cierre sin reprocesos). USD queda como mejora futura.
 2. **Registrar D9–D25** (propuestas del agente en `docs/05` y `docs/08`) en `02-decisiones.md` tras la revisión de Manu con los expertos. Manu: "en breve te lo digo". ⏳
 3. Preguntas abiertas para expertos (detalle en `docs/05` §4–5 y `docs/08` §6): qué hace el staging cuando no hay lote nuevo; celdas vacías llegan como NULL; si se recrea el checkpoint hay que subir `--generation`; uso de los contenedores `bronze/silver/gold` (hoy las tablas son managed en `uc-managed`, las 3 external locations quedaron reservadas sin uso por decisión de Manu de crear 5); el volume externo cubre todo `landing`.
-4. Ciclo de vida de landing a 90 días **no aplicado** (comando propuesto en `docs/05`) ⛔. Permisos/grupos (`de_engineers`, `analysts`) comentados en `infra/02` ⛔.
+4. Ciclo de vida de landing a 90 días **aplicado** ✅ (`infra/05-landing-lifecycle.sh`, regla `landing-90d`, verificado con `--show`, 2026-11-19). Permisos/grupos (`de_engineers`, `analysts`) comentados en `infra/02` ⛔.
 
 ## Decisiones de Manu tomadas el 2026-11-19 (ver `02-decisiones.md`)
 - Moneda PEN (revierte USD); precio no numérico va a cuarentena; `line_amount` se calcula en Silver; toda corrección o transformación va en Silver.
 
 ## Verificado vs asumido
-- **Verificado:** todo H0–H3 (arriba), 101 pruebas pytest locales, `bundle validate`, exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
+- **Verificado:** todo H0–H3 (arriba), 159 pruebas pytest locales (`.venv/bin/pytest -q`, cubren datagen, Bronze, Silver, Gold, reconcile y verificador de KPI), `bundle validate -t dev` OK sobre el bundle completo (bronze_ingest, silver_transform, gold_build, medallion_pipeline; 2026-11-19), exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
 - **Asumido / sin ejecutar:** todo `src/silver/transform.py`; que los conteos esperados de Silver coincidan; rendimiento de Silver a ~1 M de líneas.
 - **No visto renderizado:** la web `docs/diseno.html` y el enlace del diseñador (solo se validó su lógica; la extensión de Chrome no estaba conectada).
 
@@ -46,7 +46,7 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 ```
 cd /Users/macdenix/fmcg-medallion-lakehouse-azure
 export DATABRICKS_HOST=https://<workspace-host> DATABRICKS_AUTH_TYPE=azure-cli DATABRICKS_BUNDLE_ENGINE=direct
-.venv/bin/pytest -q                      # 101 pruebas
+.venv/bin/pytest -q                      # 159 pruebas
 databricks bundle validate -t dev
 python3 infra/run_sql.py <archivo.sql> --warehouse <warehouse-id> [--dry-run]
 ```

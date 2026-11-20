@@ -12,7 +12,7 @@ Diseño: `03-diseno-solucion.md` §5.3–5.4. Insumo: Silver (`08-silver-impleme
 | Transformaciones Spark | `src/gold/transform.py` | una función por tabla; recarga completa con `INSERT OVERWRITE`; reconciliación y registro en `ops.gold_runs` |
 | Entrypoint | `src/gold/run.py` | `--catalog --task (setup\|<tabla>\|all) [--skip-setup] [--run-id]`; ruta vía `co_filename` (sin depender de `__file__`) |
 | Job | `resources/gold_job.yml` | `gold_build`: `setup` → `dim_date` ‖ `dim_customer` ‖ `dim_product` → `dim_price` (← `dim_product`) → `fact_sales` (← 4 dims) → `agg_sales_monthly` → `feature_sales_monthly`. **No enlazado** a `databricks.yml` |
-| Pruebas | `tests/test_gold_*.py` | 31 nuevas (132 en total) |
+| Pruebas | `tests/test_gold_*.py` | 31 nuevas (132 al cierre de Gold; 159 hoy con todo el repo) |
 
 ### Modelo
 
