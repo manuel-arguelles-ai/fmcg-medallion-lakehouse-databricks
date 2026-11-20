@@ -7,7 +7,7 @@ Fuente de verdad de requisitos: `07-silver-requisitos.md`. Diseño: `03-diseno-s
 
 | Pieza | Archivo | Notas |
 |---|---|---|
-| Reglas (34) y funciones puras | `src/silver/rules.py` | catálogo `RULES` (id, descripción, severidad, acción) + parseo de fechas (5 formatos), precios, cantidades, ids, texto, dedup; `clean_customer/product/price/order` como oráculo testeable |
+| Reglas (33) y funciones puras | `src/silver/rules.py` | catálogo `RULES` (id, descripción, severidad, acción) + parseo de fechas (5 formatos), precios, cantidades, ids, texto, dedup; `clean_customer/product/price/order` como oráculo testeable |
 | Tablas de referencia | `src/silver/reference_data.py` | ciudades/typos, categoría→división, typos de nombre, atributos por compañía; derivadas de lo que genera datagen (un test verifica la cobertura) |
 | DDL + siembra | `src/silver/ddl.py` → `src/silver/sql/01_silver_ddl.sql` (**NO EJECUTADO**) | `silver.*`, `quarantine.*`, `ops.dq_results`, `silver.ref_*`, siembra de `ref_*` (solo inserta lo que falta) y miembros `-1`; el `.sql` se genera del código y un test comprueba que coinciden |
 | Transformaciones Spark | `src/silver/transform.py` | una función por entidad, ambas compañías con el mismo código; serverless (solo DataFrame/SQL, sin RDD/caché) |
@@ -66,7 +66,7 @@ Validación: **P** = pytest local (reglas puras), **S** = pendiente de correr en
 | Cálculos derivados | `order_year/quarter/month/month_start`, `is_weekend`, `unit_price`, `line_amount` (D20) | P+S |
 | Normalización y nulos (no solo descartar) | obligatorios → cuarentena; opcionales → `Unknown` + flag | P+S |
 | Mayúsculas/minúsculas y monedas | CUS_04, PRD_05; columna `currency` (D17) | P+S |
-| Reglas de calidad explícitas | `RULES` (34, id/severidad/acción) | P+R |
+| Reglas de calidad explícitas | `RULES` (33, id/severidad/acción) | P+R |
 | Orquestación | `resources/silver_job.yml` | bundle validate OK en copia; no desplegado |
 | Tipos correctos | DDL: `DATE`, `INT`, `DECIMAL(12,2)/(18,2)`, `BOOLEAN` | R |
 
@@ -144,10 +144,10 @@ Más Silver contiene las 2 filas `-1` de customers y 2 de products (cuentan apar
 ## 7. Qué quedó validado y qué no
 
 **Validado localmente (pytest, 101 en total):**
-- Las 34 reglas puras: casos borde (4 formatos de fecha + ISO y «Tuesday, July 01, 2025», precio negativo/no numérico/nulo, qty nula/0/negativa/no entera, `customer_id` inválido, `product_id` `PX-`/no numérico, dups con distinto `_ingest_ts` y empate).
+- Las 33 reglas puras: casos borde (4 formatos de fecha + ISO y «Tuesday, July 01, 2025», precio negativo/no numérico/nulo, qty nula/0/negativa/no entera, `customer_id` inválido, `product_id` `PX-`/no numérico, dups con distinto `_ingest_ts` y empate).
 - Cada anomalía sembrada por datagen es detectada por su regla, con conteo exacto igual al manifest; la madre limpia no dispara **ninguna** regla.
 - Cobertura de las tablas de referencia contra datagen; DDL/siembra coherentes y `01_silver_ddl.sql` sincronizado con el generador; columnas crudas = registro de Bronze.
-- Estática de `transform.py`: compila, usa exactamente las 34 reglas, sin RDD/`sparkContext`/`cache`/`persist`/overwrite; `run.py` (argumentos); orden de dependencias.
+- Estática de `transform.py`: compila, usa exactamente las 33 reglas, sin RDD/`sparkContext`/`cache`/`persist`/overwrite; `run.py` (argumentos); orden de dependencias.
 - `resources/silver_job.yml` es YAML válido y `databricks bundle validate -t dev` (sobre una copia temporal con el `include` y el `sync`) devolvió OK con las dependencias esperadas.
 
 **Pendiente de correr en Spark / workspace (no afirmado):**
