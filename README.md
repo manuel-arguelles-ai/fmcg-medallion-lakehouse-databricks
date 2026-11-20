@@ -83,6 +83,7 @@ docs/         design, decisions, per-layer implementation, acceptance criteria
 Prerequisites: Azure subscription, Azure CLI, Databricks CLI ≥ 0.288, Python 3.11+.
 
 ```bash
+git clone https://github.com/manuel-arguelles-ai/fmcg-medallion-lakehouse-databricks && cd fmcg-medallion-lakehouse-databricks
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/pytest -q                                   # 164 tests, no cluster needed
 
@@ -117,6 +118,14 @@ python3 infra/03-deploy-dashboard.py && python3 infra/04-deploy-genie.py
 - **Reconciliation gate.** The last task compares landing → bronze → silver → gold counts and amounts per company and source, and fails the job on any mismatch.
 - **Per-layer write-ups.** Bronze [`docs/05`](docs/05-bronce-implementacion.md), Silver [`docs/08`](docs/08-silver-implementacion.md), Gold [`docs/09`](docs/09-gold-implementacion.md) and its [requirements](docs/09a-gold-requisitos.md), orchestration [`docs/10b`](docs/10b-incremental-y-orquestacion.md), serving [`docs/11`](docs/11-serving.md).
 - **Honest status.** Verified vs assumed items are tracked in [`docs/ESTADO.md`](docs/ESTADO.md); decisions in [`docs/02-decisiones.md`](docs/02-decisiones.md); acceptance criteria and the scoring of this repo in [`docs/10-criterios-aceptacion.md`](docs/10-criterios-aceptacion.md).
+
+## Costs and cleanup
+
+No NAT gateway (no fixed hourly charge), serverless compute only, SQL warehouse auto-stop of 10 minutes, locally redundant storage. To remove everything created by `infra/01-provision-azure.sh`:
+
+```bash
+az group delete --name rg-fmcg-lakehouse-dev-cus-001 --yes --no-wait
+```
 
 ## Known limitations and next steps
 
