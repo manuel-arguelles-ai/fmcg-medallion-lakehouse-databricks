@@ -7,7 +7,7 @@ Bronze = zona de aterrizaje. **Capturar todo, no transformar nada.** Dato tal cu
 
 ## Lo que pide la sala (literal resumido)
 - Ingerir crudo, sin limpieza ni transformación; "solo subir los archivos crudos".
-- **Todas las columnas como STRING** (varios expertos coinciden: varios de los expertos).
+- **Todas las columnas como STRING** (varios expertos de la sala coinciden).
 - Saber **cuál es la fuente y cada cuánto se actualiza** (frecuencia).
 - Definir: qué **sistemas se migran**, **frecuencia**, **formato**, **carpeta de destino**.
 - **Metadatos de trazabilidad**: origen, fecha de ingesta, tipo (carga), y reglas básicas de validación.
