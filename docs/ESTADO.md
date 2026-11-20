@@ -18,13 +18,9 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 
 ## Pendientes (orden sugerido)
 1. ~~Moneda a USD~~ **Descartado**: D26 quedó en **PEN** (cierre sin reprocesos). USD queda como mejora futura.
-2. **Enlazar y correr Silver** ⛔: agregar `include: [resources/*.yml]` y `src/silver/**` en `sync.include` de `databricks.yml`; ejecutar antes `src/silver/sql/01_silver_ddl.sql` (**NO EJECUTADO**, con `infra/run_sql.py`, pide OK de Manu); `bundle validate` → `deploy` → correr `silver_transform` en modo `full`.
-3. **Validar Silver contra `src/silver/expected.py`** ⏳ (hija/orders: 296.754 en Silver y 4.633 en cuarentena; ver `docs/08` §5). Riesgos de Spark aún no probados: `try_element_at` vía `call_function`, patrón de fecha `MMMM d, yyyy`, comportamiento ANSI, `MERGE ... UPDATE SET *` desde vista temporal. (`try_to_date` vía `call_function` sí funciona: lo usa Bronce.)
-4. **Idempotencia e incremental de Silver** ⏳ (dos corridas iguales; modo `incremental` desde `staging_*`).
-5. **Registrar D9–D25** (propuestas del agente en `docs/05` y `docs/08`) en `02-decisiones.md` tras la revisión de Manu con los expertos. Manu: "en breve te lo digo". ⏳
-6. Preguntas abiertas para expertos (detalle en `docs/05` §4–5 y `docs/08` §6): qué hace el staging cuando no hay lote nuevo; celdas vacías llegan como NULL; si se recrea el checkpoint hay que subir `--generation`; uso de los contenedores `bronze/silver/gold` (hoy las tablas son managed en `uc-managed`, las 3 external locations quedaron reservadas sin uso por decisión de Manu de crear 5); el volume externo cubre todo `landing`.
-7. Ciclo de vida de landing a 90 días **no aplicado** (comando propuesto en `docs/05`) ⛔. Permisos/grupos (`de_engineers`, `analysts`) comentados en `infra/02` ⛔.
-8. Gold (H5), orquestación (H6), dashboard y Genie (H7), README final y publicación a GitHub (H8).
+2. **Registrar D9–D25** (propuestas del agente en `docs/05` y `docs/08`) en `02-decisiones.md` tras la revisión de Manu con los expertos. Manu: "en breve te lo digo". ⏳
+3. Preguntas abiertas para expertos (detalle en `docs/05` §4–5 y `docs/08` §6): qué hace el staging cuando no hay lote nuevo; celdas vacías llegan como NULL; si se recrea el checkpoint hay que subir `--generation`; uso de los contenedores `bronze/silver/gold` (hoy las tablas son managed en `uc-managed`, las 3 external locations quedaron reservadas sin uso por decisión de Manu de crear 5); el volume externo cubre todo `landing`.
+4. Ciclo de vida de landing a 90 días **no aplicado** (comando propuesto en `docs/05`) ⛔. Permisos/grupos (`de_engineers`, `analysts`) comentados en `infra/02` ⛔.
 
 ## Decisiones de Manu tomadas el 2026-11-19 (ver `02-decisiones.md`)
 - Moneda PEN (revierte USD); precio no numérico va a cuarentena; `line_amount` se calcula en Silver; toda corrección o transformación va en Silver.
