@@ -26,3 +26,19 @@ Verificado con `az` y `databricks` CLI, sin crear ni modificar nada.
 - Cómputo para jobs (serverless o cluster pequeño), validar cuotas de la Free Trial.
 
 > Toda creación/modificación en Azure o Databricks se propone con el comando exacto y se ejecuta solo con confirmación explícita.
+
+---
+# Aprovisionado para esta solución (2026-11-19)
+
+Recursos nuevos y exclusivos (script: `infra/01-provision-azure.sh`), verificados por CLI:
+
+| Recurso | Nombre |
+|---|---|
+| Resource group | `rg-fmcg-lakehouse-dev-cus-001` |
+| ADLS Gen2 (HNS, LRS, TLS1.2, sin blob público) | `stfmcglakehousedevcus001` |
+| Contenedores | `landing`, `bronze`, `silver`, `gold`, `uc-managed` |
+| Access Connector (identidad del sistema) | `ac-fmcg-lakehouse-dev-cus-001` + rol *Storage Blob Data Contributor* sobre el storage |
+| Databricks workspace **premium** | `dbw-fmcg-lakehouse-dev-cus-001` (IPs públicas en nodos; **0 NAT gateways** en el RG gestionado) |
+
+## Hallazgo: metastore compartido
+Unity Catalog admite un metastore por región y tenant. El workspace nuevo quedó asignado automáticamente al metastore ya existente en `centralus`, por lo que **ve** catálogos y external locations ajenos (`fmcg`, `fmcg_dev`, `pede_dev`, `ext_*`). No los usamos ni los modificamos. Aislamiento real de esta solución: storage propio, access connector propio, credencial y external locations propias, catálogo propio.
