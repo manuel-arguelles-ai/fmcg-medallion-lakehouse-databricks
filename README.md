@@ -1,6 +1,6 @@
 # FMCG Medallion Lakehouse on Azure Databricks
 
-[![Tests](https://img.shields.io/badge/tests-159%20passing-brightgreen)](tests) [![Platform](https://img.shields.io/badge/platform-Azure%20Databricks-red)](#architecture) [![Governance](https://img.shields.io/badge/governance-Unity%20Catalog-blue)](#architecture) [![IaC](https://img.shields.io/badge/deploy-Asset%20Bundles-orange)](databricks.yml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-164%20passing-brightgreen)](tests) [![Platform](https://img.shields.io/badge/platform-Azure%20Databricks-red)](#architecture) [![Governance](https://img.shields.io/badge/governance-Unity%20Catalog-blue)](#architecture) [![IaC](https://img.shields.io/badge/deploy-Asset%20Bundles-orange)](databricks.yml) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 An end-to-end **Bronze → Silver → Gold → BI/AI** lakehouse for a fast-moving consumer goods (FMCG) group, built on **ADLS Gen2, Azure Databricks (serverless) and Unity Catalog**. It consolidates two companies — a clean parent (*madre*) and a messy subsidiary (*hija*) — into one conformed star schema, with measurable data quality, reconciled layers, an incremental pipeline, an AI/BI dashboard and a Genie space.
 
@@ -74,7 +74,7 @@ src/pipeline/ cross-layer reconciliation
 resources/    Databricks jobs (bronze via databricks.yml, silver, gold, master pipeline)
 dashboards/   AI/BI dashboard definition   genie/  Genie space definition
 scripts/      independent KPI verification
-tests/        159 pytest tests (pure logic, no Spark needed)
+tests/        164 pytest tests (pure logic, no Spark needed)
 docs/         design, decisions, per-layer implementation, acceptance criteria
 ```
 
@@ -84,7 +84,7 @@ Prerequisites: Azure subscription, Azure CLI, Databricks CLI ≥ 0.288, Python 3
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/pytest -q                                   # 159 tests, no cluster needed
+.venv/bin/pytest -q                                   # 164 tests, no cluster needed
 
 # 1. Azure resources (RG, ADLS Gen2, Access Connector, premium workspace)
 bash infra/01-provision-azure.sh                      # review variables first

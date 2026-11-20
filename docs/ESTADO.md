@@ -12,7 +12,7 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 | H3 Bronze (Auto Loader) | ✅ | Job desplegado y corrido en serverless: 8/8 tablas reconcilian con el MANIFEST (filas y archivos), 0 `_rescued_data`; 2.ª corrida = 0 archivos nuevos, 0 filas escritas (idempotente) |
 | H4 Silver | ✅ | DDL ejecutado (19 sentencias); `silver_transform` modo `full` en serverless: orders 699.699 + 296.754, cuarentena 4.633, prices 24 en cuarentena; coincide con `expected.py`. 2.ª corrida `full` con los mismos conteos |
 | H5 Gold | ✅ | `gold_build` en serverless, 7 tareas ok; ingresos iguales en Silver, `fact_sales` y `agg_sales_monthly`; 6 vistas KPI; KPIs recalculados en Python desde los CSV (`scripts/verify_gold_kpis.py`, 342 comparaciones OK, `docs/09` §8); 2.ª corrida idéntica |
-| H6 Orquestación end-to-end + incremental | ✅ | job maestro `fmcg-medallion-pipeline` (Bronze → Silver → Gold → `reconcile` con `ops.pipeline_runs`; falla si no cuadra). Lote incremental real (25 filas de hija, subido a landing): Bronze 305.968, Silver 296.776, cuarentena 4.634 y 996.475 líneas en Gold, todo igual a lo calculado antes en Python; ingreso 37.450.922,98 PEN; corrida incremental repetida sin cambios. Detalle: `docs/10b-incremental-y-orquestacion.md` |
+| H6 Orquestación end-to-end + incremental | ✅ | job maestro `fmcg-medallion-pipeline` (Bronze → Silver → Gold → `reconcile` con `ops.pipeline_runs`; falla si no cuadra). Lote incremental real (25 filas de hija, subido a landing): Bronze 305.968, Silver 296.776, cuarentena 4.634 y 996.475 líneas en Gold, todo igual a lo calculado antes en Python; ingreso 37.450.922,98 PEN; corrida incremental repetida sin cambios. Corridas verdes del maestro (bronze, silver, gold, reconcile = SUCCESS): run `644643814040590` (con el lote, 2026-11-19 22:17–22:26 -05) y run `490051995343769` (repetición). Trigger diario 06:00 Lima en PAUSED; `max_retries: 1` en tareas con código. Detalle: `docs/10b-incremental-y-orquestacion.md` |
 | H7 Dashboard + Genie | ✅ | dashboard AI/BI `FMCG Sales Insights` (12 datasets verificados, 2 páginas) y espacio Genie `FMCG Sales Genie` (4 preguntas contrastadas con SQL directo). Detalle y capturas: `docs/11-serving.md` |
 | H8 README final + `.drawio` + GitHub | 🟡 | `.drawio` en `docs/`; README final y publicación en curso |
 
@@ -26,7 +26,7 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 - Moneda PEN (revierte USD); precio no numérico va a cuarentena; `line_amount` se calcula en Silver; toda corrección o transformación va en Silver.
 
 ## Verificado vs asumido
-- **Verificado:** todo H0–H3 (arriba), 159 pruebas pytest locales (`.venv/bin/pytest -q`, cubren datagen, Bronze, Silver, Gold, reconcile y verificador de KPI), `bundle validate -t dev` OK sobre el bundle completo (bronze_ingest, silver_transform, gold_build, medallion_pipeline; 2026-11-19), exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
+- **Verificado:** todo H0–H3 (arriba), 164 pruebas pytest locales (`.venv/bin/pytest -q`, cubren datagen, Bronze, Silver, Gold, reconcile y verificador de KPI), `bundle validate -t dev` OK sobre el bundle completo (bronze_ingest, silver_transform, gold_build, medallion_pipeline; 2026-11-19), exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
 - **Verificado también (H4–H7):** Silver y Gold corridos en serverless y reconciliados con lo calculado en Python; job maestro e incremental con lote real; dashboard y Genie contrastados con SQL directo.
 - **Asumido / sin ejecutar:** rendimiento a escalas mayores que ~1 M de líneas; comportamiento con volúmenes de landing de decenas de miles de archivos.
 - **No visto renderizado:** la web `docs/diseno.html` y el enlace del diseñador (solo se validó su lógica; la extensión de Chrome no estaba conectada).
@@ -47,7 +47,7 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 ```
 cd /Users/macdenix/fmcg-medallion-lakehouse-azure
 export DATABRICKS_HOST=https://<workspace-host> DATABRICKS_AUTH_TYPE=azure-cli DATABRICKS_BUNDLE_ENGINE=direct
-.venv/bin/pytest -q                      # 159 pruebas
+.venv/bin/pytest -q                      # 164 pruebas
 databricks bundle validate -t dev
 python3 infra/run_sql.py <archivo.sql> --warehouse <warehouse-id> [--dry-run]
 ```

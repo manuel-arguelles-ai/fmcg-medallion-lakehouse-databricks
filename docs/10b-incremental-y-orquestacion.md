@@ -21,7 +21,8 @@
 
 ## Idempotencia
 - Corrida incremental **sin** lote nuevo: Bronce no escribe filas y Silver/cuarentena/Gold quedan idénticos (incluida la marca `_silver_updated_at`). Esto requirió un fix: el `MERGE` incremental de Silver actualiza solo si la fila es estrictamente más reciente (`>`).
-- Corrida incremental repetida **después** del lote: mismos conteos (ver `ops.pipeline_runs`).
+- Corrida incremental repetida **después** del lote (run `490051995343769`, SUCCESS en las 4 tareas): mismos conteos, 996.475 líneas y 37.450.922,98 PEN.
+- Corrida con el lote: run `644643814040590`, SUCCESS en bronze, silver, gold y reconcile.
 
 ## Nueva línea base
 996.475 líneas y 37.450.922,98 PEN. El lote de prueba queda en landing como parte del dataset.
