@@ -1,0 +1,78 @@
+# Asset Bundle de la solucion FMCG (por ahora solo Bronze). NO se ha desplegado.
+# Validar:  DATABRICKS_AUTH_TYPE=azure-cli databricks bundle validate -t dev
+# Desplegar (solo con confirmacion de Manu, y tras ejecutar infra/02 y 03):  databricks bundle deploy -t dev
+bundle:
+  name: fmcg-medallion-lakehouse
+
+variables:
+  catalog:
+    description: Catalogo de Unity Catalog de la solucion
+    default: fmcg_lakehouse
+
+# Sincroniza solo el codigo necesario al workspace.
+sync:
+  include:
+    - src/bronze/**
+  exclude:
+    - src/datagen/**
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://<workspace-host>
+
+resources:
+  jobs:
+    bronze_ingest:
+      name: fmcg-bronze-ingest
+      description: Ingesta Bronze (Auto Loader) de 2 companias x 4 fuentes; una tarea por fuente, en paralelo.
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - pyyaml
+      tasks:
+        - task_key: madre_customers
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "customers"]
+        - task_key: madre_products
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "products"]
+        - task_key: madre_prices
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "prices"]
+        - task_key: madre_orders
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "orders"]
+        - task_key: hija_customers
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "customers"]
+        - task_key: hija_products
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "products"]
+        - task_key: hija_prices
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "prices"]
+        - task_key: hija_orders
+          environment_key: default
+          spark_python_task:
+            python_file: src/bronze/ingest.py
+            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "orders"]

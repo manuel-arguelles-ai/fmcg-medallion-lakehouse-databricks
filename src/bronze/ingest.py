@@ -15,7 +15,11 @@ import sys
 import uuid
 
 # Permite `import bronze.*` al correr como script suelto (spark_python_task) o como modulo.
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    _SRC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+except NameError:  # ejecucion sin __file__: se asume cwd = raiz del bundle
+    _SRC = os.path.join(os.getcwd(), "src")
+sys.path.insert(0, _SRC)
 
 from bronze import schemas, validation  # noqa: E402
 from bronze.registry import SourceSpec, get_spec, ops_ddl  # noqa: E402

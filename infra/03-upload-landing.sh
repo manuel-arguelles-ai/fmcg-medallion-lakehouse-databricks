@@ -20,7 +20,7 @@ DRY=""
 [[ "${1:-}" == "--dry-run" ]] && DRY="--dryrun"
 
 [[ -f "$SRC/MANIFEST.json" ]] || { echo "Falta $SRC/MANIFEST.json: genera los datos primero." >&2; exit 1; }
-echo "Origen: $SRC  ->  https://$SA.blob.core.windows.net/$CONTAINER/  (dry-run: ${DRY:+si}${DRY:-no}, overwrite: $OVERWRITE)"
+echo "Origen: $SRC  ->  https://$SA.blob.core.windows.net/$CONTAINER/  (dry-run: $([[ -n "$DRY" ]] && echo si || echo no), overwrite: $OVERWRITE)"
 
 az storage blob upload-batch \
   --account-name "$SA" --destination "$CONTAINER" --source "$SRC" \
