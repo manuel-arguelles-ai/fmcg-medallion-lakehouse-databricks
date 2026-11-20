@@ -109,3 +109,19 @@ Verificación posterior (lectura): `SELECT * FROM fmcg_lakehouse.ops.gold_runs O
 2. Cálculo independiente de KPIs en Python sobre los CSV de datagen (criterio de salida de H5): reutilizar `silver.expected` para obtener las líneas limpias y comparar ingresos por compañía × año contra `v_kpi_sales_monthly`.
 3. Prueba de idempotencia: correr `gold_build` dos veces y comparar conteos/sumas (deben ser idénticos; las claves sustitutas también).
 4. Dashboard y Genie (H7) sobre `gold.v_kpi_*`.
+
+## 8. Verificación independiente de KPIs
+
+`scripts/verify_gold_kpis.py` calcula los KPI en Python puro desde `data/generated` (reglas de `src/silver` + dedup, misma lógica que `silver.expected`; sin Spark ni Gold) y los compara con Gold vía Statement Execution API (solo `SELECT`, warehouse `<warehouse-id>`, tolerancia 0.01; razones 1e-6; sale con código ≠ 0 si difiere). Pruebas puras: `tests/test_verify_gold_kpis.py` (10).
+
+Resultado (19-nov-2026, Silver y Gold ya cargados): **coinciden todos los chequeos**.
+
+| KPI | Filas comparadas | Resultado |
+|---|---|---|
+| Total `fact_sales` (líneas / ingreso / cantidad) | 996.453 / 37.450.346,40 / 3.245.701 en ambos lados | OK |
+| Ingresos, cantidad, líneas, pedidos y líneas sin precio por (company, mes) — `v_kpi_sales_monthly` | 48 | OK |
+| Top 10 productos por ingreso, por año y Total (rank, ingreso, cantidad) — `v_kpi_top10_products` | 30 | OK |
+| Mix por categoría (ingreso, cantidad, participación) — `v_kpi_category_mix` | 264 | OK |
+| Comparativo madre vs hija (participación y variación mensual) — `v_kpi_company_comparison` | 48 | OK |
+
+Ingreso por compañía y año (esperado = Gold): madre 2024 13.280.110,26 · madre 2025 14.248.977,29 · hija 2024 4.791.700,43 · hija 2025 5.129.558,42. Con esto se cierra el criterio de salida de H5; Gold reproduce las reglas de Silver sin diferencias.
