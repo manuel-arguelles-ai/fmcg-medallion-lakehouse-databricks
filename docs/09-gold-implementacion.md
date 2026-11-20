@@ -28,6 +28,33 @@ Diseño: `03-diseno-solucion.md` §5.3–5.4. Insumo: Silver (`08-silver-impleme
 
 Vistas (`gold.v_kpi_*`): `sales_monthly` (ingresos, cantidad, pedidos, ticket por mes y compañía), `top10_products` (por año y `Total`, `RANK`), `category_mix` (participación por división/categoría), `company_comparison` (madre vs hija: participación del mes y variación mensual), `data_quality` (última corrida de Silver por entidad desde `ops.dq_results`, con la descripción de cada regla de `silver/rules.py` embebida), `quarantine_summary` (conteo por entidad, compañía y regla).
 
+### Pregunta de negocio → objeto Gold → consumidor
+
+Cada tabla y vista lleva esta pregunta y su consumidor en su `COMMENT` de Unity Catalog (formato `... Responde: <pregunta>. Consumidor: <BI|ML|AI>`), generado desde `ddl.BUSINESS` en `src/gold/ddl.py`. Consumidores: **BI** = dashboard AI/BI `FMCG Sales Insights`; **AI** = espacio Genie `FMCG Sales Genie`; **ML** = entrenamiento de modelos.
+
+| Pregunta de negocio | Objeto Gold | Tipo | Consumidor |
+|---|---|---|---|
+| ¿Cómo se filtran y agrupan las ventas por año, trimestre, mes, día de semana o fin de semana? | `dim_date` | tabla | BI, AI |
+| ¿Quién compra: cliente, ciudad, mercado y canal de cada venta? | `dim_customer` | tabla | BI, AI |
+| ¿Qué se vende: producto, variante, categoría y división? | `dim_product` | tabla | BI, AI |
+| ¿Cuál era el precio vigente de un producto en un mes y cuánto cambió respecto del mes anterior? | `dim_price` | tabla | BI, ML |
+| ¿Cuánto se vendió (ingreso, cantidad, pedidos) por día, cliente, producto y compañía? | `fact_sales` | tabla | BI, AI, ML |
+| ¿Cuánto vendió cada par cliente-producto en cada mes? (base del top 10 y del mix) | `agg_sales_monthly` | tabla | BI, AI, ML |
+| ¿Cuánto comprará un cliente de un producto el mes siguiente? (etiqueta de entrenamiento) | `feature_sales_monthly` | tabla | ML |
+| ¿Cómo evolucionan ingresos, cantidad, pedidos y ticket promedio mes a mes por compañía? | `v_kpi_sales_monthly` | vista | BI, AI |
+| ¿Qué 10 productos generan más ingresos por año y en todo el período? | `v_kpi_top10_products` | vista | BI, AI |
+| ¿Qué peso tiene cada división y categoría en los ingresos del mes de cada compañía? | `v_kpi_category_mix` | vista | BI, AI |
+| ¿Cómo se compara la hija con la madre: participación, variación mensual y clientes activos? | `v_kpi_company_comparison` | vista | BI, AI |
+| ¿Qué reglas de calidad fallaron en la última corrida de Silver y con qué tasa? | `v_kpi_data_quality` | vista | BI, AI |
+| ¿Cuántas filas quedaron en cuarentena por entidad, compañía y regla? | `v_kpi_quarantine_summary` | vista | BI, AI |
+
+(`ops.gold_runs` también lo declara, con consumidor `operacion`: qué escribió cada tarea de Gold y si pasó sus reconciliaciones.)
+
+**Comentarios de columna:** todas las columnas de las 7 tablas, de `ops.gold_runs` y de las 6 vistas tienen `COMMENT` (las vistas declaran la lista de columnas con comentario en su `CREATE OR REPLACE VIEW`, porque las columnas calculadas no heredan comentario). Como `CREATE TABLE IF NOT EXISTS` no altera tablas ya creadas, los comentarios se llevan a UC con `src/gold/sql/02_gold_comments.sql` (generado: `cd src && python -m gold.ddl fmcg_lakehouse --comments > gold/sql/02_gold_comments.sql`; solo `COMMENT ON TABLE`, `ALTER TABLE ... ALTER COLUMN ... COMMENT` y las mismas `CREATE OR REPLACE VIEW` de `setup`; idempotente):
+```
+python3 infra/run_sql.py src/gold/sql/02_gold_comments.sql --warehouse <warehouse-id>
+```
+
 **Moneda:** Gold no fija ninguna. Todo monto (`unit_price`, `line_amount`, `revenue`) viaja con la columna `currency` que viene de Silver (hoy `PEN`), y todas las agregaciones agrupan también por `currency`; un test verifica que el SQL no contiene `INR`/`PEN`/`USD`. El nombre `total_amount_inr` del diseño §5.3 se descarta.
 
 ## 2. Supuestos y decisiones propuestas (para registrar en `02-decisiones.md`)
