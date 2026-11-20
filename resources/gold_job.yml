@@ -1,0 +1,80 @@
+# Job de Asset Bundle: Gold (Silver -> Gold). NO incluido en databricks.yml todavia: para enlazarlo
+#   1) agregar resources/gold_job.yml a `include` de databricks.yml
+#   2) agregar `src/gold/**` a sync.include (el codigo debe subir al workspace)
+# NO DESPLEGADO / NO EJECUTADO. Requiere Silver cargado y su DDL (las vistas de calidad leen ops.dq_results
+# y quarantine.*). La tarea `setup` crea tablas/vistas (idempotente; equivale a src/gold/sql/01_gold_ddl.sql).
+# Dependencias: setup -> dim_date | dim_customer | dim_product (en paralelo); dim_price <- dim_product;
+# fact_sales <- las 4 dimensiones; agg_sales_monthly <- fact_sales; feature_sales_monthly <- agg_sales_monthly.
+# Cada tarea reconstruye su tabla completa desde Silver (INSERT OVERWRITE): idempotente y reconstruible.
+# Parametro del job: catalog. La dependencia Silver -> Gold entre jobs queda para H6 (orquestacion).
+resources:
+  jobs:
+    gold_build:
+      name: fmcg-gold-build
+      description: Gold (estrella dim_*/fact_sales, agregado mensual, features ML y vistas de KPI). Una tarea por tabla.
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+      tasks:
+        - task_key: setup
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "setup"]
+        - task_key: dim_date
+          depends_on:
+            - task_key: setup
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_date", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: dim_customer
+          depends_on:
+            - task_key: setup
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_customer", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: dim_product
+          depends_on:
+            - task_key: setup
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_product", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: dim_price
+          depends_on:
+            - task_key: dim_product
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_price", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: fact_sales
+          depends_on:
+            - task_key: dim_date
+            - task_key: dim_customer
+            - task_key: dim_product
+            - task_key: dim_price
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "fact_sales", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: agg_sales_monthly
+          depends_on:
+            - task_key: fact_sales
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "agg_sales_monthly", "--skip-setup", "--run-id", "{{job.run_id}}"]
+        - task_key: feature_sales_monthly
+          depends_on:
+            - task_key: agg_sales_monthly
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/run.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "feature_sales_monthly", "--skip-setup", "--run-id", "{{job.run_id}}"]
