@@ -27,7 +27,8 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 
 ## Verificado vs asumido
 - **Verificado:** todo H0–H3 (arriba), 159 pruebas pytest locales (`.venv/bin/pytest -q`, cubren datagen, Bronze, Silver, Gold, reconcile y verificador de KPI), `bundle validate -t dev` OK sobre el bundle completo (bronze_ingest, silver_transform, gold_build, medallion_pipeline; 2026-11-19), exportación del `.drawio` (XML válido, 27 nodos, 13 aristas).
-- **Asumido / sin ejecutar:** todo `src/silver/transform.py`; que los conteos esperados de Silver coincidan; rendimiento de Silver a ~1 M de líneas.
+- **Verificado también (H4–H7):** Silver y Gold corridos en serverless y reconciliados con lo calculado en Python; job maestro e incremental con lote real; dashboard y Genie contrastados con SQL directo.
+- **Asumido / sin ejecutar:** rendimiento a escalas mayores que ~1 M de líneas; comportamiento con volúmenes de landing de decenas de miles de archivos.
 - **No visto renderizado:** la web `docs/diseno.html` y el enlace del diseñador (solo se validó su lógica; la extensión de Chrome no estaba conectada).
 
 ## Trampas de entorno (costaron tiempo)

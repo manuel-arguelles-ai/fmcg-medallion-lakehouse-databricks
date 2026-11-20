@@ -8,7 +8,7 @@
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_date (
   `date_sk` INT COMMENT 'yyyymmdd; -1 = desconocido',
   `date` DATE COMMENT 'dia calendario',
-  `year` INT,
+  `year` INT COMMENT 'anio calendario (yyyy)',
   `quarter` INT COMMENT '1..4',
   `quarter_label` STRING COMMENT 'Q1..Q4',
   `month` INT COMMENT '1..12',
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_date (
   `_silver_updated_at` TIMESTAMP COMMENT 'ultima escritura de la fila origen en Silver',
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
-COMMENT 'Calendario diario (anios completos que cubren los pedidos) + miembro -1. Clave unica: date_sk. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Calendario diario (anios completos que cubren los pedidos) + miembro -1. Clave unica: date_sk. Recarga completa (INSERT OVERWRITE). Responde: como se filtran y agrupan las ventas por anio, trimestre, mes, dia de semana o fin de semana. Consumidor: BI, AI';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_customer (
   `customer_sk` BIGINT COMMENT 'clave sustituta = xxhash64(customer_key), estable entre recargas; -1 = desconocido',
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_customer (
   `_silver_updated_at` TIMESTAMP COMMENT 'ultima escritura de la fila origen en Silver',
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
-COMMENT 'Clientes SCD1 (estado actual de Silver) + miembro -1. Clave unica: company, customer_id. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Clientes SCD1 (estado actual de Silver) + miembro -1. Clave unica: company, customer_id. Recarga completa (INSERT OVERWRITE). Responde: quien compra: cliente, ciudad, mercado y canal de cada venta. Consumidor: BI, AI';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_product (
   `product_sk` BIGINT COMMENT 'clave sustituta = xxhash64(product_key); -1 = desconocido',
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_product (
   `_silver_updated_at` TIMESTAMP COMMENT 'ultima escritura de la fila origen en Silver',
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
-COMMENT 'Productos SCD1 (estado actual de Silver) + miembro -1. Clave unica: company, product_id. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Productos SCD1 (estado actual de Silver) + miembro -1. Clave unica: company, product_id. Recarga completa (INSERT OVERWRITE). Responde: que se vende: producto, variante, categoria y division. Consumidor: BI, AI';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_price (
   `price_sk` BIGINT COMMENT 'clave sustituta = xxhash64(product_key|valid_from); -1 = sin precio',
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.dim_price (
   `_silver_updated_at` TIMESTAMP COMMENT 'ultima escritura de la fila origen en Silver',
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
-COMMENT 'Precio por producto con vigencia mensual (valid_from/valid_to) + miembro -1. Clave unica: company, product_id, valid_from. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Precio por producto con vigencia mensual (valid_from/valid_to) + miembro -1. Clave unica: company, product_id, valid_from. Recarga completa (INSERT OVERWRITE). Responde: cual era el precio vigente de un producto en un mes y cuanto cambio respecto del mes anterior. Consumidor: BI, ML';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.fact_sales (
   `company` STRING COMMENT 'madre | hija (dimension degenerada)',
@@ -115,13 +115,13 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.fact_sales (
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
 CLUSTER BY (order_month_start, product_sk)
-COMMENT 'Hecho de ventas, grano linea de pedido; monto = line_amount de Silver. Clave unica: company, order_id, line_no. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Hecho de ventas, grano linea de pedido; monto = line_amount de Silver. Clave unica: company, order_id, line_no. Recarga completa (INSERT OVERWRITE). Responde: cuanto se vendio (ingreso, cantidad, pedidos) por dia, cliente, producto y compania. Consumidor: BI, AI, ML';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.agg_sales_monthly (
   `month_start` DATE COMMENT 'mes (primer dia)',
-  `year` INT,
-  `quarter` INT,
-  `month` INT,
+  `year` INT COMMENT 'anio de month_start',
+  `quarter` INT COMMENT 'trimestre de month_start (1..4)',
+  `month` INT COMMENT 'mes de month_start (1..12)',
   `company` STRING COMMENT 'madre | hija',
   `customer_sk` BIGINT COMMENT 'dim_customer',
   `product_sk` BIGINT COMMENT 'dim_product',
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.agg_sales_monthly (
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
 CLUSTER BY (month_start, product_sk)
-COMMENT 'Agregado mes x producto x cliente derivado de fact_sales (reconstruible). Clave unica: month_start, company, customer_sk, product_sk, currency. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Agregado mes x producto x cliente derivado de fact_sales (reconstruible). Clave unica: month_start, company, customer_sk, product_sk, currency. Recarga completa (INSERT OVERWRITE). Responde: cuanto vendio cada par cliente-producto en cada mes (base del top 10 y del mix). Consumidor: BI, AI, ML';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.feature_sales_monthly (
   `month_start` DATE COMMENT 'mes de la observacion',
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.gold.feature_sales_monthly (
   `_gold_loaded_at` TIMESTAMP COMMENT 'momento de la recarga de Gold'
 )
 CLUSTER BY (month_start, customer_sk)
-COMMENT 'Features ML mes x cliente x producto con lags de calendario y etiqueta del mes siguiente. Clave unica: month_start, company, customer_sk, product_sk, currency. Recarga completa (INSERT OVERWRITE)';
+COMMENT 'Features ML mes x cliente x producto con lags de calendario y etiqueta del mes siguiente. Clave unica: month_start, company, customer_sk, product_sk, currency. Recarga completa (INSERT OVERWRITE). Responde: cuanto comprara un cliente de un producto el mes siguiente (etiqueta de entrenamiento). Consumidor: ML';
 
 CREATE TABLE IF NOT EXISTS fmcg_lakehouse.ops.gold_runs (
   `run_id` STRING COMMENT 'id de la corrida de Gold',
@@ -168,15 +168,29 @@ CREATE TABLE IF NOT EXISTS fmcg_lakehouse.ops.gold_runs (
   `target_table` STRING COMMENT 'tabla escrita',
   `rows_written` BIGINT COMMENT 'filas tras el INSERT OVERWRITE',
   `checks` STRING COMMENT 'reconciliaciones hechas (texto)',
-  `started_at` TIMESTAMP,
-  `finished_at` TIMESTAMP,
+  `started_at` TIMESTAMP COMMENT 'inicio de la tarea (UTC)',
+  `finished_at` TIMESTAMP COMMENT 'fin de la tarea (UTC)',
   `status` STRING COMMENT 'ok | failed',
-  `error` STRING
+  `error` STRING COMMENT 'mensaje de error si status = failed (NULL si ok)'
 )
-COMMENT 'Una fila por tarea de Gold: filas escritas y reconciliaciones';
+COMMENT 'Una fila por tarea de Gold: filas escritas y reconciliaciones. Responde: que escribio cada tarea de Gold y si pasaron sus reconciliaciones. Consumidor: operacion';
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_sales_monthly
-COMMENT 'KPI: ingresos, cantidad, pedidos y ticket por mes y compania'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_sales_monthly (
+  `year` COMMENT 'anio calendario',
+  `quarter` COMMENT 'trimestre 1..4',
+  `month` COMMENT 'mes 1..12',
+  `month_start` COMMENT 'primer dia del mes',
+  `year_month` COMMENT 'YYYY-MM',
+  `company` COMMENT 'madre | hija',
+  `currency` COMMENT 'moneda de los montos (de Silver)',
+  `revenue` COMMENT 'ingresos = SUM(line_amount); lineas sin precio no suman',
+  `total_qty` COMMENT 'cantidad vendida = SUM(order_qty)',
+  `orders` COMMENT 'pedidos distintos del mes y compania',
+  `order_lines` COMMENT 'lineas de pedido',
+  `lines_without_price` COMMENT 'lineas con price_missing (no suman ingresos)',
+  `avg_ticket` COMMENT 'ticket promedio = revenue / orders'
+)
+COMMENT 'KPI: ingresos, cantidad, pedidos y ticket por mes y compania. Responde: como evolucionan ingresos, cantidad, pedidos y ticket promedio mes a mes por compania. Consumidor: BI, AI'
 AS
 SELECT d.year, d.quarter, d.month, d.month_start, d.year_month,
   f.company, f.currency,
@@ -190,8 +204,21 @@ FROM fmcg_lakehouse.gold.fact_sales f
 JOIN fmcg_lakehouse.gold.dim_date d ON d.date_sk = f.date_sk
 GROUP BY d.year, d.quarter, d.month, d.month_start, d.year_month, f.company, f.currency;
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_top10_products
-COMMENT 'KPI: top 10 productos por ingreso, por anio y Total (RANK, empates comparten puesto)'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_top10_products (
+  `period` COMMENT 'anio (yyyy) o ''Total'' para todo el periodo',
+  `revenue_rank` COMMENT 'puesto por ingresos dentro de period y currency (RANK: empates comparten puesto)',
+  `company` COMMENT 'madre | hija',
+  `product_name` COMMENT 'nombre completo del producto',
+  `product` COMMENT 'nombre sin variante',
+  `variant` COMMENT 'variante (texto entre parentesis)',
+  `category` COMMENT 'categoria canonica',
+  `division` COMMENT 'division por categoria o ''Unknown''',
+  `currency` COMMENT 'moneda de revenue',
+  `revenue` COMMENT 'ingresos del producto en el periodo',
+  `total_qty` COMMENT 'cantidad vendida del producto en el periodo',
+  `product_sk` COMMENT 'clave de dim_product'
+)
+COMMENT 'KPI: top 10 productos por ingreso, por anio y Total (RANK, empates comparten puesto). Responde: que 10 productos generan mas ingresos por anio y en todo el periodo. Consumidor: BI, AI'
 AS
 WITH by_period AS (
   SELECT CAST(a.year AS STRING) AS period, a.product_sk, a.currency,
@@ -209,8 +236,18 @@ SELECT r.period, r.revenue_rank, p.company, p.product_name, p.product, p.variant
 FROM ranked r JOIN fmcg_lakehouse.gold.dim_product p ON p.product_sk = r.product_sk
 WHERE r.revenue_rank <= 10;
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_category_mix
-COMMENT 'KPI: mix por division/categoria y participacion en el mes por compania'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_category_mix (
+  `year` COMMENT 'anio de month_start',
+  `month_start` COMMENT 'mes (primer dia)',
+  `company` COMMENT 'madre | hija',
+  `division` COMMENT 'division por categoria o ''Unknown''',
+  `category` COMMENT 'categoria canonica',
+  `currency` COMMENT 'moneda de revenue',
+  `revenue` COMMENT 'ingresos de la categoria en el mes y compania',
+  `total_qty` COMMENT 'cantidad vendida de la categoria en el mes y compania',
+  `revenue_share` COMMENT 'participacion de la categoria en los ingresos del mes de la compania (0..1)'
+)
+COMMENT 'KPI: mix por division/categoria y participacion en el mes por compania. Responde: que peso tiene cada division y categoria en los ingresos del mes de cada compania. Consumidor: BI, AI'
 AS
 SELECT a.year, a.month_start, a.company, p.division, p.category, a.currency,
   SUM(a.revenue) AS revenue,
@@ -221,8 +258,21 @@ FROM fmcg_lakehouse.gold.agg_sales_monthly a
 JOIN fmcg_lakehouse.gold.dim_product p ON p.product_sk = a.product_sk
 GROUP BY a.year, a.month_start, a.company, p.division, p.category, a.currency;
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_company_comparison
-COMMENT 'KPI: comparativo madre vs hija por mes (participacion y variacion mensual)'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_company_comparison (
+  `year` COMMENT 'anio de month_start',
+  `month_start` COMMENT 'mes (primer dia)',
+  `company` COMMENT 'madre | hija',
+  `currency` COMMENT 'moneda de los montos',
+  `revenue` COMMENT 'ingresos del mes de la compania',
+  `total_qty` COMMENT 'cantidad vendida del mes',
+  `orders` COMMENT 'pedidos distintos del mes',
+  `active_customers` COMMENT 'clientes distintos con compra en el mes (sin el miembro -1)',
+  `lines_unknown_customer` COMMENT 'lineas con cliente desconocido (-1); cuentan en ingresos',
+  `avg_ticket` COMMENT 'ticket promedio = revenue / orders',
+  `revenue_share_month` COMMENT 'participacion de la compania en los ingresos del mes (0..1)',
+  `revenue_mom_pct` COMMENT 'variacion mensual de ingresos vs el mes anterior de la misma compania (0,05 = +5%; NULL en el primer mes)'
+)
+COMMENT 'KPI: comparativo madre vs hija por mes (participacion y variacion mensual). Responde: como se compara la hija con la madre: participacion, variacion mensual y clientes activos. Consumidor: BI, AI'
 AS
 WITH m AS (
   SELECT f.order_month_start AS month_start, f.company, f.currency,
@@ -239,8 +289,21 @@ SELECT YEAR(m.month_start) AS year, m.*,
     AS revenue_mom_pct
 FROM m;
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_data_quality
-COMMENT 'Calidad: ultima corrida de Silver por entidad (ops.dq_results) con descripcion de la regla'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_data_quality (
+  `entity` COMMENT 'customers | products | prices | orders',
+  `company` COMMENT 'madre | hija',
+  `rule_id` COMMENT 'id de la regla (silver/rules.py)',
+  `description` COMMENT 'que valida la regla',
+  `severity` COMMENT 'severidad de la regla',
+  `action` COMMENT 'corregir | marcar | cuarentena',
+  `rows_evaluated` COMMENT 'poblacion de la etapa donde se evalua la regla',
+  `rows_failed` COMMENT 'filas que dispararon la regla',
+  `fail_rate` COMMENT 'rows_failed / rows_evaluated (0..1)',
+  `mode` COMMENT 'incremental | full',
+  `batch_id` COMMENT 'id de la corrida de Silver',
+  `ts` COMMENT 'momento de la corrida'
+)
+COMMENT 'Calidad: ultima corrida de Silver por entidad (ops.dq_results) con descripcion de la regla. Responde: que reglas de calidad fallaron en la ultima corrida de Silver y con que tasa. Consumidor: BI, AI'
 AS
 WITH latest AS (
   SELECT entity, MAX(ts) AS ts FROM fmcg_lakehouse.ops.dq_results GROUP BY entity
@@ -289,8 +352,14 @@ FROM fmcg_lakehouse.ops.dq_results q
 JOIN latest l ON l.entity = q.entity AND l.ts = q.ts
 LEFT JOIN rules r ON r.rule_id = q.rule_id;
 
-CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_quarantine_summary
-COMMENT 'Calidad: filas en cuarentena por entidad, compania y regla'
+CREATE OR REPLACE VIEW fmcg_lakehouse.gold.v_kpi_quarantine_summary (
+  `entity` COMMENT 'customers | products | prices | orders',
+  `company` COMMENT 'madre | hija',
+  `rule_id` COMMENT 'regla que mando la fila a cuarentena',
+  `rows_quarantined` COMMENT 'filas en cuarentena',
+  `last_quarantined_at` COMMENT 'ultima vez que se puso una fila en cuarentena por esa regla'
+)
+COMMENT 'Calidad: filas en cuarentena por entidad, compania y regla. Responde: cuantas filas quedaron en cuarentena por entidad, compania y regla. Consumidor: BI, AI'
 AS
 SELECT entity, company, rule_id, COUNT(*) AS rows_quarantined,
   MAX(quarantined_at) AS last_quarantined_at

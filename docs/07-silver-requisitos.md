@@ -28,7 +28,7 @@ Silver = dato confiable: tipado, limpio, deduplicado, estandarizado y conformado
 | Claves | Clave de negocio = clave natural + `company`. Huérfanos → miembro desconocido `-1` explícito (no `999999`). |
 | Joins | `LEFT JOIN` a products/customers; no resueltos → cuarentena + conteo. |
 | Typos y mapeos | En **tablas de referencia** (`silver.ref_city_mapping`, `silver.ref_category_division`, `silver.ref_typo_fixes`), no en código. |
-| Moneda | Columna `currency` estandarizada ('INR') en precios y montos; una sola moneda de reporte. |
+| Moneda | **Vigente: PEN (D26).** Columna `currency` estandarizada ('INR' en la referencia) en precios y montos; una sola moneda de reporte. |
 | Derivados permitidos en Silver | Partes de fecha (`order_year`, `order_quarter`, `order_month`, `order_month_start`, `is_weekend`), flags de calidad, texto normalizado, `line_amount_inr` (cantidad × precio vigente del mes; NULL + flag si no hay precio). A confirmar con expertos si `line_amount_inr` vive en Silver o solo en Gold. |
 | Idempotencia | `MERGE` por clave de negocio; reprocesar el mismo lote no duplica ni cambia resultados. |
 | Lectura de Bronze | Desde `bronze.staging_<company>_<source>` (solo lote nuevo) en incremental; desde la tabla Bronze completa en carga inicial/reproceso. |

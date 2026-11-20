@@ -123,3 +123,44 @@ def test_job_tasks_and_dependencies_match_transform():
         assert tasks[k]["spark_python_task"]["python_file"] == "../src/gold/run.py"
     assert {p["name"] for p in job["parameters"]} == {"catalog"}
 
+
+
+COMMENTS_FILE = ROOT / "src" / "gold" / "sql" / "02_gold_comments.sql"
+
+
+def test_every_gold_column_has_a_comment():
+    """GLD-13: tablas, ops.gold_runs y vistas declaran COMMENT en todas sus columnas."""
+    for t, (_, cols, _) in ddl.GOLD.items():
+        assert all(m.strip() for _, _, m in cols + ddl.AUDIT), t
+    assert all(m.strip() for _, _, m in ddl.GOLD_RUNS)
+    assert set(ddl.VIEW_COLUMNS) == set(ddl.VIEW_COMMENTS)
+    for v, cols in ddl.VIEW_COLUMNS.items():
+        names = [c for c, _ in cols]
+        assert len(names) == len(set(names)) and all(m.strip() for _, m in cols), v
+    for s in ddl.setup_statements("c"):
+        head = s.split("\nAS\n")[0] if s.startswith("CREATE OR REPLACE VIEW") else s.split("\n)")[0]
+        for line in head.splitlines()[1:]:
+            if line.strip().startswith("`"):
+                assert " COMMENT '" in line, line
+
+
+def test_every_gold_object_declares_question_and_consumer():
+    """GLD-11: cada tabla y vista dice que pregunta responde y quien la consume (BI | ML | AI)."""
+    comments = [ddl.table_comment(t) for t in ddl.TABLES] + [ddl.view_comment(v) for v in ddl.VIEW_COMMENTS]
+    for c in comments:
+        assert re.search(r"Responde: .+\. Consumidor: (BI|ML|AI)(, (BI|ML|AI))*$", c), c
+    assert set(ddl.BUSINESS) == set(ddl.TABLES) | set(ddl.VIEW_COMMENTS) | {"gold_runs"}
+
+
+def test_comments_sql_in_sync_and_metadata_only():
+    text = COMMENTS_FILE.read_text(encoding="utf-8")
+    assert text == ddl.render_comments_sql("fmcg_lakehouse")
+    stmts = split_statements(text)
+    assert stmts == [s.strip() for s in ddl.comment_statements("fmcg_lakehouse")]
+    for s in ddl.comment_statements("c"):
+        assert s.startswith(("COMMENT ON TABLE c.gold.", "ALTER TABLE c.gold.", "COMMENT ON TABLE c.ops.gold_runs ",
+                             "ALTER TABLE c.ops.gold_runs ", "CREATE OR REPLACE VIEW c.gold."))
+        code = re.sub(r"'(?:[^']|'')*'", "''", s)
+        assert not re.search(r"\b(DROP|DELETE|TRUNCATE|INSERT|MERGE|UPDATE)\b", code)
+        if s.startswith("ALTER TABLE"):
+            assert re.fullmatch(r"ALTER TABLE \S+ ALTER COLUMN `\w+` COMMENT ''", code), s

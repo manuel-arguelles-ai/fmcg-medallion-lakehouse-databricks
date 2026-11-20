@@ -135,7 +135,7 @@ Más Silver contiene las 2 filas `-1` de customers y 2 de products (cuentan apar
 1. **`line_amount` en Silver o solo en Gold** (D20): hoy en Silver con precio vigente del mes. ¿Se congela al cargar o Gold lo recalcula con `dim_price` con vigencia?
 2. **Precio no numérico: cuarentena vs 0 marcado** (D18). Con cuarentena, 18.995 líneas de la hija quedan con `line_amount` NULL (los 24 producto-mes sin precio).
 3. **Huérfanos: ¿`-1` con bandera (D19) o cuarentena** como dice el diseño? Afecta si la venta con cliente desconocido cuenta en los ingresos de Gold (hoy sí).
-4. **Moneda**: ¿PEN (dato real) o INR por herencia de documentos? (D17)
+4. **Moneda**: ¿PEN (dato real) o INR por herencia de documentos? (D17) — **Resuelta: PEN (D26, 2026-11-19).**
 5. **Ciudad nula**: ¿aceptan `Unknown` o hay una fuente para recuperarla? (D23)
 6. **Formato `dd/MM/yyyy` vs `MM/dd/yyyy`**: se asumió día primero (así lo emite datagen); en datos reales sería ambiguo cuando día ≤ 12.
 7. ¿SCD2 de clientes/productos desde Silver (CDF ya activo en esas dos tablas) o solo en Gold?

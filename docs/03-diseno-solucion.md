@@ -105,7 +105,7 @@ Volumen sintético inicial: ~1 M de líneas de pedido en 24 meses, suficiente pa
 
 Optimización: `OPTIMIZE` + clustering líquido (`CLUSTER BY`) en hechos en lugar de Z-order manual; estadísticas y `ANALYZE TABLE`.
 
-**Decisiones abiertas (expertos)**: grano único diario con agregado derivado (propuesto) vs hecho mensual como la referencia; modelado de precio (vigencia vs tabla de hechos de precio); moneda única INR o multimoneda; metric views de Unity Catalog para los KPI.
+**Decisiones abiertas (expertos)**: grano único diario con agregado derivado (propuesto) vs hecho mensual como la referencia; modelado de precio (vigencia vs tabla de hechos de precio); moneda única o multimoneda (**vigente: PEN, D26**); metric views de Unity Catalog para los KPI.
 
 ### 5.4 Serving
 - Dashboard de Databricks SQL equivalente al "Sales Insights" (filtros año / trimestre / mes, ingresos, cantidad, top 10 productos, mix por categoría) **más** comparativo madre vs hija y panel de calidad (filas rechazadas por regla).

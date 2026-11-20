@@ -2,6 +2,8 @@
 
 `sql/01_gold_ddl.sql` se GENERA desde aqui (un test verifica que coincide):
     cd src && python -m gold.ddl fmcg_lakehouse > gold/sql/01_gold_ddl.sql
+`sql/02_gold_comments.sql` (comentarios sobre tablas ya creadas) tambien se genera:
+    cd src && python -m gold.ddl fmcg_lakehouse --comments > gold/sql/02_gold_comments.sql
 `transform.setup()` ejecuta las mismas sentencias (todas idempotentes: CREATE TABLE IF NOT EXISTS y
 CREATE OR REPLACE VIEW). Las tablas se recargan completas desde Silver con INSERT OVERWRITE.
 Moneda: Gold NO fija ninguna; los montos llevan al lado la columna `currency` que viene de Silver.
@@ -20,7 +22,7 @@ GOLD = {
     "dim_date": (["date_sk"], [
         ("date_sk", "INT", "yyyymmdd; -1 = desconocido"),
         ("date", "DATE", "dia calendario"),
-        ("year", "INT", ""), ("quarter", "INT", "1..4"), ("quarter_label", "STRING", "Q1..Q4"),
+        ("year", "INT", "anio calendario (yyyy)"), ("quarter", "INT", "1..4"), ("quarter_label", "STRING", "Q1..Q4"),
         ("month", "INT", "1..12"), ("month_name", "STRING", "nombre del mes en espanol"),
         ("year_month", "STRING", "YYYY-MM"), ("month_start", "DATE", "primer dia del mes"),
         ("month_end", "DATE", "ultimo dia del mes"), ("day", "INT", "dia del mes"),
@@ -102,7 +104,8 @@ GOLD = {
     ], ["order_month_start", "product_sk"]),
     "agg_sales_monthly": (["month_start", "company", "customer_sk", "product_sk", "currency"], [
         ("month_start", "DATE", "mes (primer dia)"),
-        ("year", "INT", ""), ("quarter", "INT", ""), ("month", "INT", ""),
+        ("year", "INT", "anio de month_start"), ("quarter", "INT", "trimestre de month_start (1..4)"),
+        ("month", "INT", "mes de month_start (1..12)"),
         ("company", "STRING", "madre | hija"),
         ("customer_sk", "BIGINT", "dim_customer"),
         ("product_sk", "BIGINT", "dim_product"),
@@ -142,8 +145,8 @@ GOLD_RUNS = [
     ("target_table", "STRING", "tabla escrita"),
     ("rows_written", "BIGINT", "filas tras el INSERT OVERWRITE"),
     ("checks", "STRING", "reconciliaciones hechas (texto)"),
-    ("started_at", "TIMESTAMP", ""), ("finished_at", "TIMESTAMP", ""),
-    ("status", "STRING", "ok | failed"), ("error", "STRING", ""),
+    ("started_at", "TIMESTAMP", "inicio de la tarea (UTC)"), ("finished_at", "TIMESTAMP", "fin de la tarea (UTC)"),
+    ("status", "STRING", "ok | failed"), ("error", "STRING", "mensaje de error si status = failed (NULL si ok)"),
 ]
 
 
@@ -175,16 +178,56 @@ COMMENTS = {
 }
 
 
+# objeto -> (pregunta de negocio que responde, consumidores: BI = dashboard, ML = modelos, AI = Genie)
+BUSINESS = {
+    "dim_date": ("como se filtran y agrupan las ventas por anio, trimestre, mes, dia de semana o fin de semana",
+                 "BI, AI"),
+    "dim_customer": ("quien compra: cliente, ciudad, mercado y canal de cada venta", "BI, AI"),
+    "dim_product": ("que se vende: producto, variante, categoria y division", "BI, AI"),
+    "dim_price": ("cual era el precio vigente de un producto en un mes y cuanto cambio respecto del mes anterior",
+                  "BI, ML"),
+    "fact_sales": ("cuanto se vendio (ingreso, cantidad, pedidos) por dia, cliente, producto y compania", "BI, AI, ML"),
+    "agg_sales_monthly": ("cuanto vendio cada par cliente-producto en cada mes (base del top 10 y del mix)",
+                          "BI, AI, ML"),
+    "feature_sales_monthly": ("cuanto comprara un cliente de un producto el mes siguiente (etiqueta de entrenamiento)",
+                              "ML"),
+    "v_kpi_sales_monthly": ("como evolucionan ingresos, cantidad, pedidos y ticket promedio mes a mes por compania",
+                            "BI, AI"),
+    "v_kpi_top10_products": ("que 10 productos generan mas ingresos por anio y en todo el periodo", "BI, AI"),
+    "v_kpi_category_mix": ("que peso tiene cada division y categoria en los ingresos del mes de cada compania",
+                           "BI, AI"),
+    "v_kpi_company_comparison": ("como se compara la hija con la madre: participacion, variacion mensual y "
+                                 "clientes activos", "BI, AI"),
+    "v_kpi_data_quality": ("que reglas de calidad fallaron en la ultima corrida de Silver y con que tasa", "BI, AI"),
+    "v_kpi_quarantine_summary": ("cuantas filas quedaron en cuarentena por entidad, compania y regla", "BI, AI"),
+    "gold_runs": ("que escribio cada tarea de Gold y si pasaron sus reconciliaciones", "operacion"),
+}
+
+
+def business_comment(obj: str) -> str:
+    q, who = BUSINESS[obj]
+    return f"Responde: {q}. Consumidor: {who}"
+
+
+def table_comment(table: str) -> str:
+    key = GOLD[table][0]
+    return (f"{COMMENTS[table]}. Clave unica: {', '.join(key)}. Recarga completa (INSERT OVERWRITE). "
+            f"{business_comment(table)}")
+
+
+GOLD_RUNS_COMMENT = "Una fila por tarea de Gold: filas escritas y reconciliaciones. " + business_comment("gold_runs")
+
+
 def table_ddl(catalog: str, table: str) -> str:
     key, cols, cluster = GOLD[table]
     cl = f"\nCLUSTER BY ({', '.join(cluster)})" if cluster else ""
     return (f"CREATE TABLE IF NOT EXISTS {catalog}.gold.{table} (\n  {_cols_sql(cols + AUDIT)}\n){cl}\n"
-            f"COMMENT {_q(COMMENTS[table] + '. Clave unica: ' + ', '.join(key) + '. Recarga completa (INSERT OVERWRITE)')}")
+            f"COMMENT {_q(table_comment(table))}")
 
 
 def gold_runs_ddl(catalog: str) -> str:
     return (f"CREATE TABLE IF NOT EXISTS {catalog}.ops.gold_runs (\n  {_cols_sql(GOLD_RUNS)}\n)\n"
-            f"COMMENT {_q('Una fila por tarea de Gold: filas escritas y reconciliaciones')}")
+            f"COMMENT {_q(GOLD_RUNS_COMMENT)}")
 
 
 # ------------------------------------------------------------------ miembros desconocidos
@@ -316,8 +359,70 @@ VIEW_COMMENTS = {
 }
 
 
+# columnas de cada vista EN EL ORDEN del SELECT (nombre, comentario); se declaran en el CREATE VIEW para que
+# Unity Catalog guarde el comentario de cada columna (las calculadas no lo heredan de las tablas).
+VIEW_COLUMNS = {
+    "v_kpi_sales_monthly": [
+        ("year", "anio calendario"), ("quarter", "trimestre 1..4"), ("month", "mes 1..12"),
+        ("month_start", "primer dia del mes"), ("year_month", "YYYY-MM"), ("company", "madre | hija"),
+        ("currency", "moneda de los montos (de Silver)"),
+        ("revenue", "ingresos = SUM(line_amount); lineas sin precio no suman"),
+        ("total_qty", "cantidad vendida = SUM(order_qty)"),
+        ("orders", "pedidos distintos del mes y compania"), ("order_lines", "lineas de pedido"),
+        ("lines_without_price", "lineas con price_missing (no suman ingresos)"),
+        ("avg_ticket", "ticket promedio = revenue / orders"),
+    ],
+    "v_kpi_top10_products": [
+        ("period", "anio (yyyy) o 'Total' para todo el periodo"),
+        ("revenue_rank", "puesto por ingresos dentro de period y currency (RANK: empates comparten puesto)"),
+        ("company", "madre | hija"), ("product_name", "nombre completo del producto"),
+        ("product", "nombre sin variante"), ("variant", "variante (texto entre parentesis)"),
+        ("category", "categoria canonica"), ("division", "division por categoria o 'Unknown'"),
+        ("currency", "moneda de revenue"), ("revenue", "ingresos del producto en el periodo"),
+        ("total_qty", "cantidad vendida del producto en el periodo"), ("product_sk", "clave de dim_product"),
+    ],
+    "v_kpi_category_mix": [
+        ("year", "anio de month_start"), ("month_start", "mes (primer dia)"), ("company", "madre | hija"),
+        ("division", "division por categoria o 'Unknown'"), ("category", "categoria canonica"),
+        ("currency", "moneda de revenue"), ("revenue", "ingresos de la categoria en el mes y compania"),
+        ("total_qty", "cantidad vendida de la categoria en el mes y compania"),
+        ("revenue_share", "participacion de la categoria en los ingresos del mes de la compania (0..1)"),
+    ],
+    "v_kpi_company_comparison": [
+        ("year", "anio de month_start"), ("month_start", "mes (primer dia)"), ("company", "madre | hija"),
+        ("currency", "moneda de los montos"), ("revenue", "ingresos del mes de la compania"),
+        ("total_qty", "cantidad vendida del mes"), ("orders", "pedidos distintos del mes"),
+        ("active_customers", "clientes distintos con compra en el mes (sin el miembro -1)"),
+        ("lines_unknown_customer", "lineas con cliente desconocido (-1); cuentan en ingresos"),
+        ("avg_ticket", "ticket promedio = revenue / orders"),
+        ("revenue_share_month", "participacion de la compania en los ingresos del mes (0..1)"),
+        ("revenue_mom_pct", "variacion mensual de ingresos vs el mes anterior de la misma compania "
+                            "(0,05 = +5%; NULL en el primer mes)"),
+    ],
+    "v_kpi_data_quality": [
+        ("entity", "customers | products | prices | orders"), ("company", "madre | hija"),
+        ("rule_id", "id de la regla (silver/rules.py)"), ("description", "que valida la regla"),
+        ("severity", "severidad de la regla"), ("action", "corregir | marcar | cuarentena"),
+        ("rows_evaluated", "poblacion de la etapa donde se evalua la regla"),
+        ("rows_failed", "filas que dispararon la regla"),
+        ("fail_rate", "rows_failed / rows_evaluated (0..1)"), ("mode", "incremental | full"),
+        ("batch_id", "id de la corrida de Silver"), ("ts", "momento de la corrida"),
+    ],
+    "v_kpi_quarantine_summary": [
+        ("entity", "customers | products | prices | orders"), ("company", "madre | hija"),
+        ("rule_id", "regla que mando la fila a cuarentena"), ("rows_quarantined", "filas en cuarentena"),
+        ("last_quarantined_at", "ultima vez que se puso una fila en cuarentena por esa regla"),
+    ],
+}
+
+
+def view_comment(name: str) -> str:
+    return f"{VIEW_COMMENTS[name]}. {business_comment(name)}"
+
+
 def view_ddl(catalog: str, name: str) -> str:
-    return (f"CREATE OR REPLACE VIEW {catalog}.gold.{name}\nCOMMENT {_q(VIEW_COMMENTS[name])}\nAS\n"
+    cols = ",\n  ".join(f"`{c}` COMMENT {_q(m)}" for c, m in VIEW_COLUMNS[name])
+    return (f"CREATE OR REPLACE VIEW {catalog}.gold.{name} (\n  {cols}\n)\nCOMMENT {_q(view_comment(name))}\nAS\n"
             f"{views(catalog)[name]}")
 
 
@@ -343,6 +448,38 @@ def render_sql(catalog: str) -> str:
     return HEADER + "\n" + ";\n\n".join(setup_statements(catalog)) + ";\n"
 
 
+# ------------------------------------------------------------------ comentarios sobre tablas ya creadas
+def comment_statements(catalog: str) -> list[str]:
+    """Lleva los comentarios del codigo a objetos que YA existen (CREATE TABLE IF NOT EXISTS no los toca).
+
+    Idempotente: COMMENT ON TABLE y ALTER COLUMN ... COMMENT solo cambian metadatos; las vistas se recrean con
+    el mismo CREATE OR REPLACE VIEW de setup (definicion + comentarios de columna)."""
+    out = []
+    for t in TABLES:
+        fq = f"{catalog}.gold.{t}"
+        out.append(f"COMMENT ON TABLE {fq} IS {_q(table_comment(t))}")
+        out += [f"ALTER TABLE {fq} ALTER COLUMN `{c}` COMMENT {_q(m)}" for c, _, m in GOLD[t][1] + AUDIT]
+    fq = f"{catalog}.ops.gold_runs"
+    out.append(f"COMMENT ON TABLE {fq} IS {_q(GOLD_RUNS_COMMENT)}")
+    out += [f"ALTER TABLE {fq} ALTER COLUMN `{c}` COMMENT {_q(m)}" for c, _, m in GOLD_RUNS]
+    out += [view_ddl(catalog, v) for v in VIEW_COMMENTS]
+    return out
+
+
+COMMENTS_HEADER = (
+    "-- GENERADO desde src/gold/ddl.py; no editar a mano:\n"
+    "--   cd src && python -m gold.ddl fmcg_lakehouse --comments > gold/sql/02_gold_comments.sql\n"
+    "-- Aplica a tablas YA creadas los comentarios de tabla (pregunta de negocio + consumidor) y de columna,\n"
+    "-- y recrea las vistas con comentarios por columna. Solo metadatos; idempotente.\n"
+)
+
+
+def render_comments_sql(catalog: str) -> str:
+    return COMMENTS_HEADER + "\n" + ";\n\n".join(comment_statements(catalog)) + ";\n"
+
+
 if __name__ == "__main__":
     import sys
-    print(render_sql(sys.argv[1] if len(sys.argv) > 1 else "fmcg_lakehouse"), end="")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    cat = args[0] if args else "fmcg_lakehouse"
+    print(render_comments_sql(cat) if "--comments" in sys.argv else render_sql(cat), end="")

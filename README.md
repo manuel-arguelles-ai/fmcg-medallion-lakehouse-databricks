@@ -6,7 +6,7 @@ An end-to-end **Bronze → Silver → Gold → BI/AI** lakehouse for a fast-movi
 
 > All data is **100 % synthetic** and generated reproducibly by [`src/datagen`](src/datagen). Reported amounts are in **PEN**.
 
-Inspired by [`takadlag/databricks-medallion-lakehouse-fmcg`](https://github.com/takadlag/databricks-medallion-lakehouse-fmcg) and rebuilt from scratch: the original lacked source data, explicit parent tables, real quality checks, IaC and orchestration (see [`docs/00-analisis-referencia.md`](docs/00-analisis-referencia.md)).
+Inspired by [`takadlag/databricks-medallion-lakehouse-fmcg`](https://github.com/takadlag/databricks-medallion-lakehouse-fmcg/tree/5e99b2b) (commit `5e99b2b`) and rebuilt from scratch: the original lacked source data, explicit parent tables, real quality checks, IaC and orchestration (see [`docs/00-analisis-referencia.md`](docs/00-analisis-referencia.md)).
 
 ## Results at a glance
 
@@ -88,9 +88,10 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 # 1. Azure resources (RG, ADLS Gen2, Access Connector, premium workspace)
 bash infra/01-provision-azure.sh                      # review variables first
-# 2. Unity Catalog objects
+# 2. Unity Catalog objects (the storage credential is created with the Databricks CLI; see the header of the SQL file)
 export DATABRICKS_HOST=https://<your-workspace>.azuredatabricks.net DATABRICKS_AUTH_TYPE=azure-cli
 python3 infra/run_sql.py infra/02-unity-catalog.sql --warehouse <warehouse-id>
+python3 infra/run_sql.py infra/02b-seed-source-registry.sql --warehouse <warehouse-id>
 # 3. Data
 (cd src && python -m datagen --out ../data/generated)  # add --small for a quick run
 bash infra/03-upload-landing.sh --dry-run             # then without --dry-run
@@ -98,7 +99,8 @@ bash infra/03-upload-landing.sh --dry-run             # then without --dry-run
 export DATABRICKS_BUNDLE_ENGINE=direct
 python3 infra/run_sql.py src/silver/sql/01_silver_ddl.sql --warehouse <warehouse-id>
 databricks bundle deploy -t dev
-databricks bundle run medallion_pipeline -t dev --params mode=full
+# medallion_pipeline chains bronze_ingest -> silver_transform -> gold_build -> reconcile
+databricks bundle run medallion_pipeline -t dev --params mode=full   # later runs: mode=incremental
 # 5. Serving
 python3 infra/03-deploy-dashboard.py && python3 infra/04-deploy-genie.py
 # 6. Independent verification
@@ -112,6 +114,7 @@ python3 infra/03-deploy-dashboard.py && python3 infra/04-deploy-genie.py
 - **Validated where it runs.** There is no local Spark; two real serverless incompatibilities (`__file__` missing, `try_to_date` absent) only surfaced in the workspace and are documented with their root cause in [`docs/ESTADO.md`](docs/ESTADO.md).
 - **Idempotent by construction.** Re-running Bronze, Silver, Gold or the master pipeline on unchanged input changes nothing.
 - **Reconciliation gate.** The last task compares landing → bronze → silver → gold counts and amounts per company and source, and fails the job on any mismatch.
+- **Per-layer write-ups.** Bronze [`docs/05`](docs/05-bronce-implementacion.md), Silver [`docs/08`](docs/08-silver-implementacion.md), Gold [`docs/09`](docs/09-gold-implementacion.md) and its [requirements](docs/09a-gold-requisitos.md), orchestration [`docs/10b`](docs/10b-incremental-y-orquestacion.md), serving [`docs/11`](docs/11-serving.md).
 - **Honest status.** Verified vs assumed items are tracked in [`docs/ESTADO.md`](docs/ESTADO.md); decisions in [`docs/02-decisiones.md`](docs/02-decisiones.md); acceptance criteria and the scoring of this repo in [`docs/10-criterios-aceptacion.md`](docs/10-criterios-aceptacion.md).
 
 ## Known limitations and next steps
