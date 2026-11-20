@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FMCG Lakehouse · Diseño</title>
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--ink:#14181f;--muted:#5b6575;--line:#dfe3ea;
+  --accent:#2457d6;--bronze:#b5703a;--bronze-bg:#fbefe4;--silver:#6b7686;--silver-bg:#eef1f5;
+  --gold:#b8890f;--gold-bg:#fbf3d9;--ok:#1f8a4c;--warn:#b26a00;--todo:#7a8494;--chip:#eef1f6;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1318;--panel:#171c23;--ink:#e8ecf2;--muted:#9aa5b5;--line:#2a313b;
+  --accent:#7aa2ff;--bronze:#e0a06b;--bronze-bg:#2a2018;--silver:#aab4c3;--silver-bg:#1f252d;
+  --gold:#e8c14f;--gold-bg:#2a2410;--ok:#4cc38a;--warn:#f0a840;--todo:#8b96a6;--chip:#212833}}
+:root[data-theme="dark"]{
+  --bg:#0f1318;--panel:#171c23;--ink:#e8ecf2;--muted:#9aa5b5;--line:#2a313b;
+  --accent:#7aa2ff;--bronze:#e0a06b;--bronze-bg:#2a2018;--silver:#aab4c3;--silver-bg:#1f252d;
+  --gold:#e8c14f;--gold-bg:#2a2410;--ok:#4cc38a;--warn:#f0a840;--todo:#8b96a6;--chip:#212833}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:22px 16px 8px;max-width:1120px;margin:0 auto;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:var(--muted);margin:0;max-width:70ch}
+button{font:inherit;color:inherit;cursor:pointer}
+.theme{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+nav{max-width:1120px;margin:10px auto 0;padding:0 16px;display:flex;gap:6px;flex-wrap:wrap}
+nav button{background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 14px;color:var(--muted)}
+nav button[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+main{max-width:1120px;margin:14px auto 60px;padding:0 16px}
+section{display:none}section.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1.25fr 1fr}
+@media(max-width:860px){.g2{grid-template-columns:1fr}}
+h2{font-size:17px;margin:0 0 8px}h3{font-size:14px;margin:14px 0 6px}
+.muted{color:var(--muted)}
+.chip{display:inline-block;background:var(--chip);border-radius:6px;padding:1px 8px;font-size:12.5px;margin:2px 4px 2px 0}
+code{background:var(--chip);border-radius:4px;padding:1px 5px;font-size:13px}
+ul{margin:6px 0 6px 18px;padding:0}li{margin:3px 0}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12.5px}
+.flow{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.node{flex:1 1 130px;min-width:130px;border:2px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);text-align:left}
+.node b{display:block}.node small{color:var(--muted)}
+.node.src{border-style:dashed}
+.node.bronze{border-color:var(--bronze);background:var(--bronze-bg)}
+.node.silver{border-color:var(--silver);background:var(--silver-bg)}
+.node.gold{border-color:var(--gold);background:var(--gold-bg)}
+.node[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.arrow{align-self:center;color:var(--muted);font-size:20px}
+.side{border-left:4px solid var(--accent)}
+.status{font-weight:600}
+.s-done{color:var(--ok)}.s-wip{color:var(--warn)}.s-todo{color:var(--todo)}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:44px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);margin:0;align-items:start}
+.tl .h{font-weight:700}
+svg text{fill:var(--ink);font:12px -apple-system,sans-serif}
+svg .t2{fill:var(--muted);font-size:11px}
+.dim{fill:var(--silver-bg);stroke:var(--silver);stroke-width:1.5}
+.fact{fill:var(--gold-bg);stroke:var(--gold);stroke-width:1.8}
+svg line{stroke:var(--muted);stroke-width:1.3}
+.sel{cursor:pointer}.sel:hover rect{stroke:var(--accent);stroke-width:2.5}
+.q{background:var(--chip);border-radius:8px;padding:8px 10px;margin:6px 0}
+footer{max-width:1120px;margin:0 auto 30px;padding:0 16px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>FMCG Medallion Lakehouse · Azure Databricks</h1>
+    <p class="sub">Diseño v0 (borrador para validar con los expertos). Bronze → Silver → Gold → BI sobre ADLS Gen2 + Unity Catalog. Datos 100&nbsp;% sintéticos.</p>
+  </div>
+  <button class="theme" id="theme" aria-label="Cambiar tema">Tema</button>
+</header>
+<nav role="tablist" id="tabs"></nav>
+<main>
+
+<section id="arq">
+  <div class="card">
+    <h2>Arquitectura (clic en una capa)</h2>
+    <p class="muted" style="margin-top:0">Escenario: una empresa madre de consumo masivo adquiere una hija (canal bares deportivos) que entrega CSV con calidad irregular. Se consolidan ambas en un solo modelo.</p>
+    <div class="flow" id="flow"></div>
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card side" id="detail"></div>
+    <div class="card">
+      <h2>Plataforma (aprovisionada)</h2>
+      <table>
+        <tr><th>Recurso</th><th>Nombre</th></tr>
+        <tr><td>Resource group</td><td><code>rg-fmcg-lakehouse-dev-cus-001</code></td></tr>
+        <tr><td>ADLS Gen2</td><td><code>stfmcglakehousedevcus001</code></td></tr>
+        <tr><td>Contenedores</td><td><span class="chip">landing</span><span class="chip">bronze</span><span class="chip">silver</span><span class="chip">gold</span><span class="chip">uc-managed</span></td></tr>
+        <tr><td>Access Connector</td><td><code>ac-fmcg-lakehouse-dev-cus-001</code></td></tr>
+        <tr><td>Workspace</td><td><code>dbw-fmcg-lakehouse-dev-cus-001</code> · premium · sin NAT</td></tr>
+        <tr><td>Catálogo UC</td><td><code>fmcg_lakehouse</code> <span class="muted">(pendiente)</span></td></tr>
+      </table>
+      <p class="muted" style="margin-bottom:0">Orquestación: Workflows con Asset Bundles. Cómputo: serverless.</p>
+    </div>
+  </div>
+</section>
+
+<section id="fuentes">
+  <div class="card">
+    <h2>Fuentes: 2 compañías × 4 entidades</h2>
+    <table>
+      <tr><th>Fuente</th><th>Madre</th><th>Hija (anomalías sembradas)</th><th>Frecuencia propuesta</th></tr>
+      <tr><td>customers</td><td>limpio</td><td>duplicados, espacios, mayúsculas mixtas, typos de ciudad, ciudades nulas</td><td>snapshot diario</td></tr>
+      <tr><td>products</td><td>limpio</td><td>duplicados, categoría en minúsculas, typo recurrente, <code>product_id</code> no numérico</td><td>snapshot diario</td></tr>
+      <tr><td>prices</td><td>limpio</td><td>4 formatos de fecha, precios negativos o no numéricos</td><td>mensual</td></tr>
+      <tr><td>orders</td><td>limpio</td><td>4 formatos de fecha, <code>customer_id</code> inválido, <code>order_qty</code> nulo, duplicados</td><td>diario incremental</td></tr>
+    </table>
+    <p class="muted">Volumen inicial: ~1 M de líneas de pedido en 24 meses (2024-01 a 2025-12), semilla fija y reproducible.</p>
+    <h3>Convención de landing</h3>
+    <code>landing/&lt;compania&gt;/&lt;fuente&gt;/ingest_date=YYYY-MM-DD/&lt;archivo&gt;.csv</code>
+  </div>
+</section>
+
+<section id="capas">
+  <div class="grid g2">
+    <div class="card"><h2 style="color:var(--bronze)">Bronze · aterrizaje</h2>
+      <ul>
+        <li>Capturar todo, no transformar nada. <b>Todo STRING</b>, esquema declarado.</li>
+        <li>Auto Loader (<code>availableNow</code>) con checkpoint: cada archivo una sola vez.</li>
+        <li><b>Append-only</b>, incluso dimensiones. Los archivos de landing no se mueven.</li>
+        <li><code>_rescued_data</code> para lo que no encaja.</li>
+        <li>Tabla de paso con solo el lote nuevo.</li>
+        <li>Validaciones mínimas pre-carga (no vacío, .csv, nombre, encabezado).</li>
+      </ul>
+      <h3>Metadatos de trazabilidad</h3>
+      <span class="chip">_company</span><span class="chip">_source_system</span><span class="chip">_source_file</span><span class="chip">_file_size</span><span class="chip">_ingest_ts</span><span class="chip">_ingest_date</span><span class="chip">_batch_id</span><span class="chip">_load_type</span>
+      <h3>Retención y seguridad</h3>
+      <ul><li>Landing 90 días (ciclo de vida); bronze: historia completa, log 30 d.</li><li>Acceso solo vía Unity Catalog; sin blob público; TLS 1.2.</li></ul>
+    </div>
+    <div class="card"><h2 style="color:var(--silver)">Silver · limpieza y conformidad</h2>
+      <ul>
+        <li>Dedup determinista: gana el más reciente por <code>_ingest_ts</code>.</li>
+        <li><b>Cuarentena</b> con <code>rule_id</code> y motivo; nada se descarta sin rastro.</li>
+        <li>Se corrige lo determinista (trim, initcap, typos desde tabla de referencia); se rechaza lo irrecuperable; lo ambiguo se marca.</li>
+        <li>Claves conformadas madre + hija; huérfanos al miembro <code>-1 Unknown</code>.</li>
+        <li><code>LEFT JOIN</code> a productos; huérfanos a cuarentena y contados.</li>
+        <li><code>MERGE</code> idempotente.</li>
+      </ul>
+      <h3>Se decide con los expertos</h3>
+      <div class="q">Lakeflow declarative pipelines con <i>expectations</i> vs jobs propios</div>
+      <div class="q">SCD2 desde silver o solo en gold</div>
+      <div class="q">Qué se corrige y qué se rechaza, regla por regla</div>
+    </div>
+    <div class="card" style="grid-column:1/-1"><h2 style="color:var(--gold)">Gold · estrella y KPIs</h2>
+      <p class="muted" style="margin-top:0">Clic en una tabla del diagrama para ver su grano.</p>
+      <div class="grid g2" style="margin-top:0">
+        <svg viewBox="0 0 520 330" role="img" aria-label="Modelo estrella" id="star"></svg>
+        <div id="tbl" class="q" style="align-self:start"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="calidad">
+  <div class="grid g2">
+    <div class="card"><h2>Calidad y observabilidad</h2>
+      <ul>
+        <li><code>ops.dq_results</code>: por corrida, regla, filas evaluadas y fallidas.</li>
+        <li><code>ops.pipeline_runs</code>: conteos por capa con reconciliación; si no cuadra, el job falla.</li>
+        <li><code>ops.landing_rejects</code>: archivos rechazados antes de entrar a bronze.</li>
+        <li>Pruebas unitarias de transformaciones y contratos de esquema.</li>
+        <li><b>Idempotencia</b>: correr el mismo lote dos veces deja todo igual.</li>
+        <li><b>Incremental</b>: un segundo lote solo modifica los meses afectados.</li>
+      </ul></div>
+    <div class="card"><h2>Brechas de la referencia que cubrimos</h2>
+      <ul>
+        <li>Sin datos (bucket del autor) → generador sintético.</li>
+        <li>Tablas madre no creadas → modelo explícito.</li>
+        <li>Gold del dashboard inexistente → <code>fact_sales</code>.</li>
+        <li>README prometía scripts, CI y Terraform que no existen.</li>
+        <li><code>dim_gross_price</code> pisaba el historial → precio con vigencia.</li>
+        <li><code>999999</code> colisionaba y no existía → miembro <code>-1</code>.</li>
+        <li><code>INNER JOIN</code> perdía pedidos → <code>LEFT JOIN</code> + cuarentena.</li>
+        <li>Bronze con overwrite/append mezclados → política única append-only.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section id="ruta">
+  <div class="card"><h2>Hoja de ruta</h2>
+    <ul class="tl" id="tl"></ul>
+  </div>
+  <div class="card" style="margin-top:14px"><h2>Riesgos</h2>
+    <table>
+      <tr><th>Riesgo</th><th>Mitigación</th></tr>
+      <tr><td>Metastore UC compartido con otros trabajos en la región</td><td>No tocar objetos ajenos; prefijo propio; aislamiento por storage, credencial y catálogo.</td></tr>
+      <tr><td>Cuota o tipo de cómputo en Free Trial</td><td>Validar serverless en H1; plan B cluster pequeño.</td></tr>
+      <tr><td>Criterios de los expertos cambian en vivo</td><td>Registro de decisiones; reglas en tablas de referencia, no en código.</td></tr>
+      <tr><td>Datos sintéticos poco realistas</td><td>Semilla fija, distribuciones documentadas, revisión de expertos.</td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+<footer>Fuente de verdad: <code>docs/03-diseno-solucion.md</code> y <code>docs/04-bronze-requisitos.md</code> del repo. Esta página es una vista local.</footer>
+
+<script>
+var TABS=[["arq","Arquitectura"],["fuentes","Fuentes"],["capas","Capas"],["calidad","Calidad"],["ruta","Ruta y riesgos"]];
+var LAYERS={
+ src:{t:"Fuentes · landing",c:"src",s:"CSV de madre e hija",d:["Dos sistemas: <code>madre_erp</code> (simulado) y <code>hija_export</code>.","Formato CSV UTF-8 con encabezado.","Se carga a ADLS Gen2, contenedor <code>landing</code>, bajo un volumen externo de Unity Catalog."],q:["¿Cuáles son los sistemas reales a migrar y su frecuencia?"]},
+ bronze:{t:"Bronze",c:"bronze",s:"crudo, todo STRING",d:["Dato tal cual llega; esquema declarado, sin inferencia.","Auto Loader con checkpoint; append-only.","Metadatos de trazabilidad y <code>_rescued_data</code>.","Tabla de paso con solo el lote nuevo."],q:["Auto Loader vs COPY INTO","Evolución de esquema: rescue vs addNewColumns","Retención y VACUUM","Particionado por ingest_date"]},
+ silver:{t:"Silver",c:"silver",s:"limpio y conformado",d:["Dedup determinista, tipado, fechas multi-formato.","Reglas de calidad con cuarentena.","Claves conformadas madre + hija, miembro desconocido <code>-1</code>.","MERGE idempotente."],q:["Lakeflow expectations vs jobs propios","SCD2 en silver o gold","Tabla de reglas: corregir vs rechazar"]},
+ gold:{t:"Gold",c:"gold",s:"estrella + KPIs",d:["Dimensiones conformadas y hechos al grano diario.","<code>fact_sales</code> con precio vigente a la fecha del pedido.","Agregado mensual reconstruible para el dashboard.","Clustering líquido en lugar de Z-order manual."],q:["Grano diario con agregado vs hecho mensual","Precio con vigencia vs hecho de precio","Moneda única INR o multimoneda","Metric views de Unity Catalog"]},
+ bi:{t:"Serving · BI",c:"src",s:"dashboard y Genie",d:["Dashboard SQL: filtros año / trimestre / mes, ingresos, cantidad, top 10 productos, mix por categoría.","Comparativo madre vs hija y panel de calidad.","Espacio Genie sobre gold; warehouse serverless con auto-stop."],q:[]}
+};
+var ORDER=["src","bronze","silver","gold","bi"];
+var TBL={
+ dim_date:"Grano: día. Mes, trimestre, año, fin de semana (la referencia solo tenía grano mensual).",
+ dim_customer:"Grano: cliente. SCD2 (valid_from, valid_to, is_current), clave sustituta, miembro -1.",
+ dim_product:"Grano: producto. SCD2, división, categoría, variante, miembro -1.",
+ dim_price:"Grano: producto × vigencia. Precio con efectivo desde/hasta; conserva el historial.",
+ fact_sales:"Grano: línea de pedido. total_amount_inr = cantidad × precio vigente en la fecha del pedido.",
+ fact_orders:"Grano: línea de pedido (diario). Cantidad y claves; fuente de verdad. Agregado mensual derivado: agg_sales_monthly."
+};
+var HITOS=[
+ ["H0","Infra Azure + diseño","Hecho",'s-done'],
+ ["H1","Unity Catalog: credencial, external locations, catálogo, esquemas, volume","Pendiente confirmación",'s-todo'],
+ ["H2","Generador sintético + carga a landing","Código en construcción",'s-wip'],
+ ["H3","Bronze con Auto Loader","Código en construcción",'s-wip'],
+ ["H4","Silver + cuarentena + ops","Pendiente",'s-todo'],
+ ["H5","Gold estrella + KPIs (validados contra cálculo independiente)","Pendiente",'s-todo'],
+ ["H6","Orquestación (Workflow/Bundle) + incremental","Pendiente",'s-todo'],
+ ["H7","Dashboard + Genie + capturas","Pendiente",'s-todo'],
+ ["H8","README final, diagramas, publicación a GitHub","Pendiente",'s-todo']
+];
+function $(i){return document.getElementById(i)}
+// tabs
+var tabs=$("tabs");
+TABS.forEach(function(t,i){var b=document.createElement("button");b.textContent=t[1];b.setAttribute("role","tab");b.dataset.id=t[0];b.onclick=function(){show(t[0])};tabs.appendChild(b)});
+function show(id){
+  document.querySelectorAll("section").forEach(function(s){s.classList.toggle("on",s.id===id)});
+  tabs.querySelectorAll("button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.id===id)});
+  try{localStorage.setItem("fmcg-tab",id)}catch(e){}
+  if(location.hash!=="#"+id)history.replaceState(null,"","#"+id);
+}
+// flow
+var flow=$("flow");
+ORDER.forEach(function(k,i){
+  var L=LAYERS[k];
+  var n=document.createElement("button");n.className="node "+L.c;n.dataset.k=k;n.setAttribute("aria-pressed","false");
+  n.innerHTML="<b>"+L.t+"</b><small>"+L.s+"</small>";n.onclick=function(){pick(k)};flow.appendChild(n);
+  if(i<ORDER.length-1){var a=document.createElement("span");a.className="arrow";a.textContent="→";flow.appendChild(a)}
+});
+function pick(k){
+  flow.querySelectorAll(".node").forEach(function(n){n.setAttribute("aria-pressed",n.dataset.k===k)});
+  var L=LAYERS[k];
+  $("detail").innerHTML="<h2>"+L.t+"</h2><ul>"+L.d.map(function(x){return "<li>"+x+"</li>"}).join("")+"</ul>"+
+    (L.q.length?"<h3>Decisiones abiertas (expertos)</h3>"+L.q.map(function(x){return '<div class="q">'+x+"</div>"}).join(""):"");
+}
+pick("bronze");
+// star schema
+var P={dim_date:[20,20],dim_customer:[190,20],dim_product:[360,20],fact_sales:[190,135],fact_orders:[20,250],dim_price:[360,250]};
+var svg=$("star"),h="";
+var C={fact_sales:[260,170],dim_date:[90,55],dim_customer:[260,55],dim_product:[430,55],dim_price:[430,285],fact_orders:[90,285]};
+["dim_date","dim_customer","dim_product"].forEach(function(k){h+='<line x1="'+C[k][0]+'" y1="'+(C[k][1]+25)+'" x2="260" y2="135"/>'});
+h+='<line x1="430" y1="260" x2="320" y2="195"/><line x1="90" y1="260" x2="200" y2="195"/><line x1="320" y1="150" x2="430" y2="85" stroke-dasharray="4 3"/>';
+Object.keys(P).forEach(function(k){
+  var f=k.indexOf("fact")===0,x=P[k][0],y=P[k][1],w=140,hh=f?60:50;
+  h+='<g class="sel" data-k="'+k+'" tabindex="0" role="button" aria-label="'+k+'"><rect class="'+(f?"fact":"dim")+'" x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" rx="9"/><text x="'+(x+w/2)+'" y="'+(y+hh/2-2)+'" text-anchor="middle" font-weight="600">'+k+'</text><text class="t2" x="'+(x+w/2)+'" y="'+(y+hh/2+14)+'" text-anchor="middle">'+(f?"hecho":"dimensión")+'</text></g>';
+});
+svg.innerHTML=h;
+function pickT(k){$("tbl").innerHTML="<b>"+k+"</b><br>"+TBL[k]}
+svg.querySelectorAll(".sel").forEach(function(g){g.onclick=function(){pickT(g.dataset.k)};g.onkeydown=function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pickT(g.dataset.k)}}});
+pickT("fact_sales");
+// roadmap
+$("tl").innerHTML=HITOS.map(function(x){return '<li><span class="h">'+x[0]+"</span><span>"+x[1]+'</span><span class="status '+x[3]+'">'+x[2]+"</span></li>"}).join("");
+// theme
+$("theme").onclick=function(){
+  var r=document.documentElement,cur=r.getAttribute("data-theme");
+  var dark=cur?cur==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme",dark?"light":"dark");
+};
+var first="arq";
+try{first=location.hash.slice(1)||localStorage.getItem("fmcg-tab")||"arq"}catch(e){first=location.hash.slice(1)||"arq"}
+if(!TABS.some(function(t){return t[0]===first}))first="arq";
+show(first);
+</script>
+</body>
+</html>
