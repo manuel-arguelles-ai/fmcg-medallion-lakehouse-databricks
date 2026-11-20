@@ -1,0 +1,54 @@
+# Job MAESTRO: encadena Bronze -> Silver -> Gold (run_job_task sobre los 3 jobs del bundle) y termina con
+# la reconciliacion entre capas (src/pipeline/reconcile.py), que escribe ops.pipeline_runs y FALLA si los
+# conteos landing -> bronze -> silver -> gold no cuadran (docs/03 §6, docs/10b).
+# Parametros: catalog; mode = incremental (Silver lee bronze.staging_*) | full (Silver relee Bronze completo).
+# Bronze siempre es incremental (Auto Loader); Gold siempre recarga completa (INSERT OVERWRITE).
+# Cada tarea depende de que la anterior termine OK (si Bronze falla no corre Silver, etc.).
+resources:
+  jobs:
+    medallion_pipeline:
+      name: fmcg-medallion-pipeline
+      description: Pipeline end-to-end Bronze -> Silver -> Gold + reconciliacion entre capas (ops.pipeline_runs).
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: mode
+          default: incremental
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - pyyaml
+      tasks:
+        - task_key: bronze
+          run_job_task:
+            job_id: ${resources.jobs.bronze_ingest.id}
+            job_parameters:
+              catalog: "{{job.parameters.catalog}}"
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          run_job_task:
+            job_id: ${resources.jobs.silver_transform.id}
+            job_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              mode: "{{job.parameters.mode}}"
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          run_job_task:
+            job_id: ${resources.jobs.gold_build.id}
+            job_parameters:
+              catalog: "{{job.parameters.catalog}}"
+        - task_key: reconcile
+          depends_on:
+            - task_key: gold
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/pipeline/reconcile.py
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--mode", "{{job.parameters.mode}}",
+                         "--run-id", "{{job.run_id}}"]

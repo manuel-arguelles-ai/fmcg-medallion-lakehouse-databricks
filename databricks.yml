@@ -1,6 +1,7 @@
-# Asset Bundle de la solucion FMCG (por ahora solo Bronze). NO se ha desplegado.
-# Validar:  DATABRICKS_AUTH_TYPE=azure-cli databricks bundle validate -t dev
-# Desplegar (solo con confirmacion de Manu, y tras ejecutar infra/02 y 03):  databricks bundle deploy -t dev
+# Asset Bundle de la solucion FMCG: jobs Bronze, Silver, Gold y el maestro fmcg-medallion-pipeline
+# (Bronze -> Silver -> Gold -> reconciliacion). Desplegado en dev (ver docs/ESTADO.md y docs/10b).
+# Validar:   databricks bundle validate -t dev
+# Desplegar: databricks bundle deploy -t dev   (con DATABRICKS_BUNDLE_ENGINE=direct; ver trampas en ESTADO)
 bundle:
   name: fmcg-medallion-lakehouse
 
@@ -12,6 +13,7 @@ variables:
 include:
   - resources/silver_job.yml
   - resources/gold_job.yml
+  - resources/pipeline_job.yml
 
 # Sincroniza solo el codigo necesario al workspace.
 sync:
@@ -19,6 +21,7 @@ sync:
     - src/bronze/**
     - src/silver/**
     - src/gold/**
+    - src/pipeline/**
   exclude:
     - src/datagen/**
 
@@ -35,6 +38,9 @@ resources:
       name: fmcg-bronze-ingest
       description: Ingesta Bronze (Auto Loader) de 2 companias x 4 fuentes; una tarea por fuente, en paralelo.
       max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
       environments:
         - environment_key: default
           spec:
@@ -46,39 +52,39 @@ resources:
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "customers"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "customers"]
         - task_key: madre_products
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "products"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "products"]
         - task_key: madre_prices
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "prices"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "prices"]
         - task_key: madre_orders
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "madre", "--source", "orders"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "orders"]
         - task_key: hija_customers
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "customers"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "customers"]
         - task_key: hija_products
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "products"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "products"]
         - task_key: hija_prices
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "prices"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "prices"]
         - task_key: hija_orders
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
-            parameters: ["--catalog", "${var.catalog}", "--company", "hija", "--source", "orders"]
+            parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "orders"]
