@@ -15,10 +15,13 @@ import sys
 import uuid
 
 # Permite `import bronze.*` al correr como script suelto (spark_python_task) o como modulo.
+import inspect
+
 try:
-    _SRC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-except NameError:  # ejecucion sin __file__: se asume cwd = raiz del bundle
-    _SRC = os.path.join(os.getcwd(), "src")
+    _THIS = os.path.abspath(__file__)
+except NameError:  # el runner de serverless hace exec(compile(src, filename)): __file__ no existe,
+    _THIS = os.path.abspath(inspect.currentframe().f_code.co_filename)  # pero el filename si
+_SRC = os.path.dirname(os.path.dirname(_THIS))
 sys.path.insert(0, _SRC)
 
 from bronze import schemas, validation  # noqa: E402
@@ -112,7 +115,7 @@ def run(spark, catalog: str, company: str, source: str, generation: str = "1") -
             .withColumn("_file_size", F.col("_metadata.file_size"))
             .withColumn("_file_modification_time", F.col("_metadata.file_modification_time"))
             .withColumn("_ingest_ts", F.lit(started))
-            .withColumn("_ingest_date", F.try_to_date(folder_date, F.lit("yyyy-MM-dd")))
+            .withColumn("_ingest_date", F.call_function("try_to_date", folder_date, F.lit("yyyy-MM-dd")))
             .withColumn("_batch_id", F.lit(batch_id))
             .withColumn("_load_type", F.lit(spec.load_type))
             .select(*schemas.table_columns(spec))

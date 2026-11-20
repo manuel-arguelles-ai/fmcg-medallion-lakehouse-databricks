@@ -12,10 +12,13 @@ import os
 import sys
 
 # Permite `import silver.*` al correr como script suelto (spark_python_task) o como modulo.
+import inspect
+
 try:
-    _SRC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-except NameError:  # ejecucion sin __file__: se asume cwd = raiz del bundle
-    _SRC = os.path.join(os.getcwd(), "src")
+    _THIS = os.path.abspath(__file__)
+except NameError:  # el runner de serverless hace exec(compile(src, filename)): __file__ no existe,
+    _THIS = os.path.abspath(inspect.currentframe().f_code.co_filename)  # pero el filename si
+_SRC = os.path.dirname(os.path.dirname(_THIS))
 sys.path.insert(0, _SRC)
 
 from silver import transform  # noqa: E402
