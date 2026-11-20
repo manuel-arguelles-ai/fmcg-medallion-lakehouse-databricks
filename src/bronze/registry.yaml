@@ -1,0 +1,30 @@
+# Catalogo de fuentes de Bronze como DATOS. Se expande en companias x fuentes (8 entradas)
+# y se siembra en ops.source_registry. Cambiar una fuente = cambiar este archivo.
+landing_root: /Volumes/{catalog}/bronze/landing   # volume externo sobre el contenedor landing
+defaults:
+  format: csv
+  delimiter: ","
+  encoding: UTF-8
+  header: true
+  landing_retention_days: 90          # ciclo de vida del storage (propuesta; se aplica con confirmacion)
+  bronze_retention: full_history      # + delta.logRetentionDuration=30 days, deletedFileRetentionDuration=7 days
+companies:
+  madre: {source_system: madre_erp}
+  hija: {source_system: hija_export}
+sources:
+  customers:
+    frequency: daily           # snapshot diario; el generador emite snapshots mensuales por defecto
+    load_type: full
+    columns: [customer_id, customer_name, city]
+  products:
+    frequency: daily
+    load_type: full
+    columns: [product_id, product_name, category]
+  prices:
+    frequency: monthly
+    load_type: full
+    columns: [product_id, price_month, unit_price]
+  orders:
+    frequency: daily
+    load_type: incremental     # un archivo por dia
+    columns: [order_id, line_no, order_date, customer_id, product_id, order_qty]
