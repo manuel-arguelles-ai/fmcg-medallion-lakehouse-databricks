@@ -98,6 +98,7 @@ bash infra/03-upload-landing.sh --dry-run             # then without --dry-run
 # 4. Pipeline
 export DATABRICKS_BUNDLE_ENGINE=direct
 python3 infra/run_sql.py src/silver/sql/01_silver_ddl.sql --warehouse <warehouse-id>
+export BUNDLE_VAR_warehouse_id=<warehouse-id>         # used by the dashboard resource
 databricks bundle deploy -t dev
 # medallion_pipeline chains bronze_ingest -> silver_transform -> gold_build -> reconcile
 databricks bundle run medallion_pipeline -t dev --params mode=full   # later runs: mode=incremental

@@ -10,6 +10,8 @@ variables:
   catalog:
     description: Catalogo de Unity Catalog de la solucion
     default: fmcg_lakehouse
+  warehouse_id:
+    description: ID del SQL Warehouse (export BUNDLE_VAR_warehouse_id=<id>)
 
 include:
   - resources/silver_job.yml
@@ -31,8 +33,7 @@ targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: https://<workspace-host>
+    # El host sale de la variable de entorno DATABRICKS_HOST (ver README).
 
 resources:
   jobs:

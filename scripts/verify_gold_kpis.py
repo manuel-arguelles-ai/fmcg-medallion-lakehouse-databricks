@@ -10,6 +10,7 @@ con la Statement Execution API. SOLO SELECT. Sale con codigo != 0 si algo difier
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections import defaultdict
 from decimal import Decimal
@@ -224,7 +225,7 @@ def totals(exp: dict) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--root", default=str(ROOT / "data/generated"))
-    ap.add_argument("--warehouse", default="<warehouse-id>")
+    ap.add_argument("--warehouse", default=os.environ.get("DATABRICKS_WAREHOUSE_ID"), required=not os.environ.get("DATABRICKS_WAREHOUSE_ID"))
     a = ap.parse_args()
     exp = compute_kpis(silver_rows(Path(a.root)))
     gold = fetch_gold(a.warehouse)

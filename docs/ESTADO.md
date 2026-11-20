@@ -46,6 +46,8 @@ Leyenda: ✅ verificado con ejecución real · 🟡 parcial · 🐞 roto · ⛔ 
 ## Cómo retomar
 ```
 cd /Users/macdenix/fmcg-medallion-lakehouse-azure
+# Valores reales (host, warehouse) en el índice local del proyecto; en el repo van como placeholders.
+export BUNDLE_VAR_warehouse_id=<warehouse-id> DATABRICKS_WAREHOUSE_ID=<warehouse-id>
 export DATABRICKS_HOST=https://<workspace-host> DATABRICKS_AUTH_TYPE=azure-cli DATABRICKS_BUNDLE_ENGINE=direct
 .venv/bin/pytest -q                      # 164 pruebas
 databricks bundle validate -t dev
