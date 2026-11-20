@@ -81,3 +81,10 @@ def test_ingest_helpers():
     import datetime as dt
     b = ingest.new_batch_id(s, dt.datetime(2025, 1, 2, 3, 4, 5))
     assert b.startswith("hija_orders_20250102T030405_")
+
+
+def test_seed_file_in_sync_with_registry():
+    from pathlib import Path
+    from bronze.registry import SEED_HEADER
+    f = Path(__file__).resolve().parents[1] / "infra" / "02b-seed-source-registry.sql"
+    assert f.read_text(encoding="utf-8") == SEED_HEADER + seed_sql("fmcg_lakehouse") + ";\n"

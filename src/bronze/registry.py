@@ -109,3 +109,18 @@ OPS_DDL = {
 
 def ops_ddl(catalog: str) -> list[str]:
     return [v.format(catalog=catalog) for v in OPS_DDL.values()]
+
+
+SEED_HEADER = (
+    "-- NO EJECUTADO — requiere confirmacion de Manu.\n"
+    "-- Siembra de ops.source_registry. GENERADO desde src/bronze/registry.yaml; no editar a mano:\n"
+    "--   cd src && python -m bronze.registry --seed fmcg_lakehouse > ../infra/02b-seed-source-registry.sql\n"
+    "-- (un test verifica que este archivo coincide con el registro). Ejecutar DESPUES de 02-unity-catalog.sql.\n"
+)
+
+
+if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Imprime el SQL de siembra de ops.source_registry")
+    ap.add_argument("--seed", metavar="CATALOG", required=True)
+    print(SEED_HEADER + seed_sql(ap.parse_args().seed) + ";")
