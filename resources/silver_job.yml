@@ -22,16 +22,25 @@ resources:
             environment_version: "3"
       tasks:
         - task_key: customers
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: ../src/silver/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "customers", "--mode", "{{job.parameters.mode}}"]
         - task_key: products
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: ../src/silver/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "products", "--mode", "{{job.parameters.mode}}"]
         - task_key: prices
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: products
           environment_key: default
@@ -39,6 +48,9 @@ resources:
             python_file: ../src/silver/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--entity", "prices", "--mode", "{{job.parameters.mode}}"]
         - task_key: orders
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: prices
             - task_key: customers

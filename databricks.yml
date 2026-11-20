@@ -49,41 +49,65 @@ resources:
               - pyyaml
       tasks:
         - task_key: madre_customers
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "customers"]
         - task_key: madre_products
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "products"]
         - task_key: madre_prices
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "prices"]
         - task_key: madre_orders
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "madre", "--source", "orders"]
         - task_key: hija_customers
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "customers"]
         - task_key: hija_products
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "products"]
         - task_key: hija_prices
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--company", "hija", "--source", "prices"]
         - task_key: hija_orders
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: src/bronze/ingest.py

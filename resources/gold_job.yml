@@ -22,11 +22,17 @@ resources:
             environment_version: "3"
       tasks:
         - task_key: setup
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           environment_key: default
           spark_python_task:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "setup"]
         - task_key: dim_date
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: setup
           environment_key: default
@@ -34,6 +40,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_date", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: dim_customer
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: setup
           environment_key: default
@@ -41,6 +50,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_customer", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: dim_product
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: setup
           environment_key: default
@@ -48,6 +60,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_product", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: dim_price
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: dim_product
           environment_key: default
@@ -55,6 +70,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "dim_price", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: fact_sales
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: dim_date
             - task_key: dim_customer
@@ -65,6 +83,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "fact_sales", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: agg_sales_monthly
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: fact_sales
           environment_key: default
@@ -72,6 +93,9 @@ resources:
             python_file: ../src/gold/run.py
             parameters: ["--catalog", "{{job.parameters.catalog}}", "--task", "agg_sales_monthly", "--skip-setup", "--run-id", "{{job.run_id}}"]
         - task_key: feature_sales_monthly
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: agg_sales_monthly
           environment_key: default

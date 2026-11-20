@@ -4,12 +4,22 @@
 # Parametros: catalog; mode = incremental (Silver lee bronze.staging_*) | full (Silver relee Bronze completo).
 # Bronze siempre es incremental (Auto Loader); Gold siempre recarga completa (INSERT OVERWRITE).
 # Cada tarea depende de que la anterior termine OK (si Bronze falla no corre Silver, etc.).
+# Disparador: cron diario 06:00 (Lima) PAUSADO: en dev se corre a mano (`databricks bundle run`); para activarlo
+# basta pause_status: UNPAUSED (en un target prod).
+# Reintentos: 1 tras 2 min. La API de Jobs ignora max_retries en tareas run_job_task (queda en drift perpetuo),
+# asi que el reintento va en cada tarea de los jobs hijos (bronze_ingest, silver_transform, gold_build) y aqui
+# solo en reconcile. Es seguro porque cada capa es idempotente (Auto Loader con checkpoint, MERGE en Silver,
+# INSERT OVERWRITE en Gold; reconcile solo lee y agrega una fila).
 resources:
   jobs:
     medallion_pipeline:
       name: fmcg-medallion-pipeline
       description: Pipeline end-to-end Bronze -> Silver -> Gold + reconciliacion entre capas (ops.pipeline_runs).
       max_concurrent_runs: 1
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/Lima
+        pause_status: PAUSED
       queue:
         enabled: true
       parameters:
@@ -45,6 +55,9 @@ resources:
             job_parameters:
               catalog: "{{job.parameters.catalog}}"
         - task_key: reconcile
+          max_retries: 1
+          min_retry_interval_millis: 120000
+          retry_on_timeout: false
           depends_on:
             - task_key: gold
           environment_key: default

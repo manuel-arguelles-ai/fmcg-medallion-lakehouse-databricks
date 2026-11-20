@@ -130,3 +130,20 @@ def test_lot_refuses_to_overwrite_different_content(gen_copy):
     (gen_copy / desc["path"]).write_text("otro", encoding="utf-8")
     with pytest.raises(RuntimeError, match="inmutable"):
         write_lot(gen_copy)
+
+
+def test_master_job_has_paused_schedule_and_retries():
+    """ORQ-13: disparador declarado y pausado en dev. ORQ-14: reintento en cada tarea que ejecuta codigo
+    (las run_job_task no admiten max_retries: reintentan las tareas de los jobs hijos)."""
+    job = JOB["medallion_pipeline"]
+    assert job["schedule"]["pause_status"] == "PAUSED" and job["schedule"]["quartz_cron_expression"]
+    bundle = yaml.safe_load((ROOT / "databricks.yml").read_text(encoding="utf-8"))["resources"]["jobs"]
+    jobs = {**bundle, **JOB}
+    for f in ("silver_job.yml", "gold_job.yml"):
+        jobs.update(yaml.safe_load((ROOT / "resources" / f).read_text(encoding="utf-8"))["resources"]["jobs"])
+    for name, j in jobs.items():
+        for t in j["tasks"]:
+            if "run_job_task" in t:
+                assert "max_retries" not in t, (name, t["task_key"])
+            else:
+                assert t["max_retries"] == 1 and t["min_retry_interval_millis"] >= 60000, (name, t["task_key"])
